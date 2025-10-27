@@ -1,0 +1,33 @@
+name: gastos_app
+description: "A new Flutter project."
+
+publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.9.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+  appwrite: ^20.2.1
+  provider: ^6.0.5
+  flutter_dotenv: ^6.0.0
+  intl: ^0.20.2
+  syncfusion_flutter_charts: ^31.2.3
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^6.0.0
+
+flutter:
+
+  
+  uses-material-design: true
+  assets:
+    - .env
+    - assets/images/
