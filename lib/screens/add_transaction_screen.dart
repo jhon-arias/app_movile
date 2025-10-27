@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:gastos_app/models/transaction_model.dart';
 import 'package:provider/provider.dart';
 import 'package:gastos_app/auth/auth_service.dart';
+import 'package:gastos_app/models/transaction_model.dart';
 import 'package:gastos_app/services/appwrite_service.dart';
 import 'package:gastos_app/screens/statistics_screen.dart';
 import 'package:gastos_app/widgets/transaction_form.dart';
+import 'package:gastos_app/widgets/recent_transactions.dart';
 import 'package:gastos_app/app/theme.dart';
 
 class AddTransactionScreen extends StatefulWidget {
@@ -17,6 +18,8 @@ class AddTransactionScreen extends StatefulWidget {
 class _AddTransactionScreenState extends State<AddTransactionScreen> {
   final AppWriteService _appWriteService = AppWriteService();
   String? _currentUserId;
+  List<Transaction> _recentTransactions = [];
+  bool _isLoadingRecent = false;
 
   @override
   void initState() {
@@ -29,9 +32,38 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       final user = await _appWriteService.getCurrentUser();
       if (mounted) {
         setState(() => _currentUserId = user?.$id);
+        if (_currentUserId != null) {
+          await _loadRecentTransactions();
+        }
       }
     } catch (e) {
       _showError('Error al obtener usuario: $e');
+    }
+  }
+
+  Future<void> _loadRecentTransactions() async {
+    if (_currentUserId == null) return;
+
+    setState(() => _isLoadingRecent = true);
+
+    try {
+      final fiveDaysAgo = DateTime.now().subtract(const Duration(days: 5));
+      final transactions = await _appWriteService.getTransactionsByDateRange(
+        _currentUserId!,
+        fiveDaysAgo,
+        DateTime.now(),
+      );
+
+      if (mounted) {
+        setState(() {
+          _recentTransactions = transactions;
+          _isLoadingRecent = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoadingRecent = false);
+      }
     }
   }
 
@@ -54,6 +86,9 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       );
 
       await _appWriteService.addTransaction(transactionWithUser);
+
+      // Recargar las transacciones recientes después de agregar una nueva
+      await _loadRecentTransactions();
     } catch (e) {
       _showError('Error al registrar: $e');
     }
@@ -114,12 +149,25 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       ),
       body: Column(
         children: [
+          // Formulario de transacción
           Expanded(
+            flex: 2,
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: TransactionForm(onSubmit: _addTransaction),
             ),
           ),
+
+          // Transacciones recientes
+          Expanded(
+            flex: 1,
+            child: RecentTransactionsWidget(
+              transactions: _recentTransactions,
+              isLoading: _isLoadingRecent,
+              onRefresh: _loadRecentTransactions,
+            ),
+          ),
+
           _buildFooter(),
         ],
       ),
