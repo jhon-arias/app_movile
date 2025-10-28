@@ -27,11 +27,6 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     'Evolución Mensual',
   ];
 
-  final NumberFormat _currencyFormat = NumberFormat.currency(
-    symbol: '\$',
-    decimalDigits: 0,
-  );
-
   @override
   void initState() {
     super.initState();
@@ -156,14 +151,22 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
         .toList();
   }
 
-  List<ChartData> _getMonthlyTrendData() {
-    final Map<String, double> monthlyTotals = {};
+  // NUEVA FUNCIÓN PARA DATOS SEPARADOS POR TIPO
+  Map<String, List<ChartData>> _getMonthlyTrendByTypeData() {
+    final Map<String, double> monthlyExpenses = {};
+    final Map<String, double> monthlyIncomes = {};
 
     for (final transaction in _transactions) {
       final monthKey =
           '${_getMonthName(transaction.date.month)} ${transaction.date.year}';
-      monthlyTotals[monthKey] =
-          (monthlyTotals[monthKey] ?? 0) + transaction.amount;
+
+      if (transaction.type.contains('gasto')) {
+        monthlyExpenses[monthKey] =
+            (monthlyExpenses[monthKey] ?? 0) + transaction.amount;
+      } else if (transaction.type.contains('ingreso')) {
+        monthlyIncomes[monthKey] =
+            (monthlyIncomes[monthKey] ?? 0) + transaction.amount;
+      }
     }
 
     final monthOrder = {
@@ -181,22 +184,44 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
       'Dic': 12,
     };
 
-    final sortedEntries = monthlyTotals.entries.toList()
-      ..sort((a, b) {
-        final aParts = a.key.split(' ');
-        final bParts = b.key.split(' ');
-        final aMonth = aParts[0];
-        final bMonth = bParts[0];
-        final aYear = int.parse(aParts[1]);
-        final bYear = int.parse(bParts[1]);
+    // Obtener todos los meses únicos
+    final allMonths =
+        <String>{...monthlyExpenses.keys, ...monthlyIncomes.keys}.toList()
+          ..sort((a, b) {
+            final aParts = a.split(' ');
+            final bParts = b.split(' ');
+            final aMonth = aParts[0];
+            final bMonth = bParts[0];
+            final aYear = int.parse(aParts[1]);
+            final bYear = int.parse(bParts[1]);
 
-        if (aYear != bYear) return aYear.compareTo(bYear);
-        return (monthOrder[aMonth] ?? 0).compareTo(monthOrder[bMonth] ?? 0);
-      });
+            if (aYear != bYear) return aYear.compareTo(bYear);
+            return (monthOrder[aMonth] ?? 0).compareTo(monthOrder[bMonth] ?? 0);
+          });
 
-    return sortedEntries
-        .map((entry) => ChartData(entry.key, entry.value, Colors.blue))
+    // Crear datos para gastos
+    final expensesData = allMonths
+        .map(
+          (month) => ChartData(
+            month,
+            monthlyExpenses[month] ?? 0,
+            const Color(0xFFEF5350),
+          ), // Rojo suave
+        )
         .toList();
+
+    // Crear datos para ingresos
+    final incomesData = allMonths
+        .map(
+          (month) => ChartData(
+            month,
+            monthlyIncomes[month] ?? 0,
+            const Color(0xFF66BB6A),
+          ), // Verde suave
+        )
+        .toList();
+
+    return {'gastos': expensesData, 'ingresos': incomesData};
   }
 
   String _getMonthName(int month) {
@@ -234,36 +259,39 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
 
   // COLORES PARA CATEGORÍAS
   Color _getCategoryColor(String category) {
-    const colors = [
-      Color(0xFF4CAF50),
-      Color(0xFF2196F3),
-      Color(0xFFFF9800),
-      Color(0xFFF44336),
-      Color(0xFF9C27B0),
-      Color(0xFF607D8B),
-      Color(0xFFFFC107),
-      Color(0xFF795548),
-      Color(0xFF00BCD4),
-      Color(0xFFE91E63),
+    // Degradado de plomo a azul a celeste claro (tonos suaves)
+    final grayToBlueGradient = [
+      const Color(0xFF90A4AE), // Plomo suave
+      const Color(0xFFA1B5BE), // Plomo azulado claro
+      const Color(0xFFB0BEC5), // Gris azul muy suave
+      const Color(0xFF9FA8DA), // Lavanda azul
+      const Color(0xFF90CAF9), // Azul claro suave
+      const Color(0xFF81C7E8), // Azul medio suave
+      const Color(0xFF79C2E0), // Azul celeste suave
+      const Color(0xFF81D4FA), // Celeste claro
+      const Color(0xFF9BE7FF), // Celeste muy claro
+      const Color(0xFFB3E5FC), // Celeste pastel
+      const Color(0xFFC8F7FF), // Celeste muy pastel
+      const Color(0xFFE1F5FE), // Celeste ultra claro
     ];
 
-    // Usar hash para evitar dependencia de datos calculados
-    final index = category.hashCode.abs() % colors.length;
-    return colors[index];
+    // Usar hash para asignar colores consistentemente
+    final index = category.hashCode.abs() % grayToBlueGradient.length;
+    return grayToBlueGradient[index];
   }
 
   Color _getTypeColor(String type) {
     switch (type) {
       case 'Gastos Fijos':
-        return Colors.red;
+        return const Color(0xFFEF5350); // Rojo suave
       case 'Gastos Variables':
-        return Colors.orange;
+        return const Color(0xFFFF8A65); // Naranja suave
       case 'Ingresos Fijos':
-        return Colors.green;
+        return const Color(0xFF66BB6A); // Verde suave
       case 'Ingresos Variables':
-        return Colors.blue;
+        return const Color(0xFF42A5F5); // Azul suave
       default:
-        return Colors.grey;
+        return const Color(0xFFBDBDBD); // Gris suave
     }
   }
 
@@ -565,11 +593,6 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
             const SizedBox(height: 8),
             Expanded(
               child: SfCircularChart(
-                legend: const Legend(
-                  isVisible: true,
-                  position: LegendPosition.bottom,
-                  overflowMode: LegendItemOverflowMode.wrap,
-                ),
                 series: <CircularSeries>[
                   DoughnutSeries<ChartData, String>(
                     dataSource: data,
@@ -579,7 +602,18 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                     dataLabelSettings: const DataLabelSettings(
                       isVisible: true,
                       labelPosition: ChartDataLabelPosition.outside,
+                      textStyle: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.black87,
+                      ),
+                      connectorLineSettings: ConnectorLineSettings(
+                        type: ConnectorType.curve,
+                        length: '10%',
+                      ),
                     ),
+                    dataLabelMapper: (ChartData data, _) =>
+                        '${data.x}\n\$${NumberFormat.compact().format(data.y)}',
                   ),
                 ],
               ),
@@ -608,17 +642,27 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
             const SizedBox(height: 8),
             Expanded(
               child: SfCircularChart(
-                legend: const Legend(
-                  isVisible: true,
-                  position: LegendPosition.bottom,
-                ),
                 series: <CircularSeries>[
                   PieSeries<ChartData, String>(
                     dataSource: data,
                     xValueMapper: (ChartData data, _) => data.x,
                     yValueMapper: (ChartData data, _) => data.y,
                     pointColorMapper: (ChartData data, _) => data.color,
-                    dataLabelSettings: const DataLabelSettings(isVisible: true),
+                    dataLabelSettings: const DataLabelSettings(
+                      isVisible: true,
+                      labelPosition: ChartDataLabelPosition.outside,
+                      textStyle: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.black87,
+                      ),
+                      connectorLineSettings: ConnectorLineSettings(
+                        type: ConnectorType.curve,
+                        length: '10%',
+                      ),
+                    ),
+                    dataLabelMapper: (ChartData data, _) =>
+                        '${data.x}\n\$${NumberFormat.compact().format(data.y)}',
                   ),
                 ],
               ),
@@ -630,8 +674,8 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   }
 
   Widget _buildTrendChart() {
-    final data = _getMonthlyTrendData();
-    if (data.isEmpty) {
+    final data = _getMonthlyTrendByTypeData();
+    if (data['gastos']!.isEmpty && data['ingresos']!.isEmpty) {
       return _buildNoDataMessage('No hay datos de tendencia para mostrar');
     }
 
@@ -647,14 +691,58 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
             const SizedBox(height: 8),
             Expanded(
               child: SfCartesianChart(
-                primaryXAxis: CategoryAxis(),
-                primaryYAxis: NumericAxis(numberFormat: _currencyFormat),
+                primaryXAxis: CategoryAxis(
+                  labelStyle: const TextStyle(fontSize: 10),
+                ),
+                primaryYAxis: NumericAxis(
+                  numberFormat: NumberFormat.compact(),
+                  labelStyle: const TextStyle(fontSize: 10),
+                ),
+                legend: const Legend(
+                  isVisible: true,
+                  position: LegendPosition.bottom,
+                  textStyle: TextStyle(fontSize: 11),
+                ),
                 series: <CartesianSeries>[
-                  LineSeries<ChartData, String>(
-                    dataSource: data,
+                  // Barras de gastos
+                  ColumnSeries<ChartData, String>(
+                    name: 'Gastos',
+                    dataSource: data['gastos']!,
                     xValueMapper: (ChartData data, _) => data.x,
                     yValueMapper: (ChartData data, _) => data.y,
-                    markerSettings: const MarkerSettings(isVisible: true),
+                    color: const Color(0xFFEF5350), // Rojo suave
+                    dataLabelSettings: const DataLabelSettings(
+                      isVisible: true,
+                      labelAlignment: ChartDataLabelAlignment.top,
+                      textStyle: TextStyle(
+                        fontSize: 8,
+                        color: Colors.black87,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    dataLabelMapper: (ChartData data, _) => data.y > 0
+                        ? '\$${NumberFormat.compact().format(data.y)}'
+                        : '',
+                  ),
+                  // Barras de ingresos
+                  ColumnSeries<ChartData, String>(
+                    name: 'Ingresos',
+                    dataSource: data['ingresos']!,
+                    xValueMapper: (ChartData data, _) => data.x,
+                    yValueMapper: (ChartData data, _) => data.y,
+                    color: const Color(0xFF66BB6A), // Verde suave
+                    dataLabelSettings: const DataLabelSettings(
+                      isVisible: true,
+                      labelAlignment: ChartDataLabelAlignment.top,
+                      textStyle: TextStyle(
+                        fontSize: 8,
+                        color: Colors.black87,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    dataLabelMapper: (ChartData data, _) => data.y > 0
+                        ? '\$${NumberFormat.compact().format(data.y)}'
+                        : '',
                   ),
                 ],
               ),

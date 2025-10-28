@@ -34,11 +34,6 @@ class _TransactionFormState extends State<TransactionForm> {
     {'value': 'otros', 'label': 'Otros'},
   ];
 
-  final List<Map<String, String>> _types = [
-    {'value': 'gasto', 'label': 'Gasto'},
-    {'value': 'ingreso', 'label': 'Ingreso'},
-  ];
-
   @override
   void dispose() {
     _amountController.dispose();
@@ -134,7 +129,7 @@ class _TransactionFormState extends State<TransactionForm> {
             const SizedBox(height: 12),
             _buildDescriptionField(),
             const SizedBox(height: 12),
-            _buildTypeDropdown(),
+            _buildTypeButtons(),
             const SizedBox(height: 12),
             _buildFixedToggle(),
             const SizedBox(height: 12),
@@ -189,40 +184,99 @@ class _TransactionFormState extends State<TransactionForm> {
     );
   }
 
-  Widget _buildTypeDropdown() {
-    return DropdownButtonFormField<String>(
-      value: _selectedType,
-      decoration: const InputDecoration(
-        labelText: 'Tipo de transacción',
-        border: OutlineInputBorder(),
-        filled: true,
-        fillColor: Colors.white,
+  Widget _buildTypeButtons() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Tipo',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: AppTheme.textColor,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: _buildTypeButton(
+                'gasto',
+                'Gasto',
+                Icons.remove,
+                Colors.red,
+                _selectedType == 'gasto',
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _buildTypeButton(
+                'ingreso',
+                'Ingreso',
+                Icons.add,
+                Colors.green,
+                _selectedType == 'ingreso',
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTypeButton(
+    String value,
+    String label,
+    IconData icon,
+    Color color,
+    bool isSelected,
+  ) {
+    return GestureDetector(
+      onTap: () => setState(() => _selectedType = value),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? color.withOpacity(0.08) : Colors.grey.shade50,
+          border: Border.all(
+            color: isSelected ? color : Colors.grey.shade200,
+            width: 1,
+          ),
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              color: isSelected ? color : Colors.grey.shade500,
+              size: 16,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: isSelected ? FontWeight.w500 : FontWeight.normal,
+                color: isSelected ? color : Colors.grey.shade600,
+              ),
+            ),
+          ],
+        ),
       ),
-      items: _types.map((type) {
-        return DropdownMenuItem(
-          value: type['value'],
-          child: Text(type['label']!),
-        );
-      }).toList(),
-      onChanged: (value) => setState(() => _selectedType = value!),
     );
   }
 
   Widget _buildFixedToggle() {
     return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
-        padding: const EdgeInsets.all(12.0),
+        padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                Checkbox(
-                  value: _isFixed,
-                  onChanged: (value) =>
-                      setState(() => _isFixed = value ?? false),
-                ),
-                const SizedBox(width: 8),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -232,23 +286,76 @@ class _TransactionFormState extends State<TransactionForm> {
                             ? 'Gasto Fijo'
                             : 'Ingreso Fijo',
                         style: const TextStyle(
-                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
                           color: AppTheme.textColor,
                         ),
                       ),
+                      const SizedBox(height: 4),
                       Text(
                         _selectedType == 'gasto'
                             ? 'Gasto recurrente (alquiler, servicios)'
                             : 'Ingreso recurrente (salario)',
                         style: TextStyle(
                           fontSize: 12,
-                          color: AppTheme.backgroundColor,
+                          color: AppTheme.textSecondary,
                         ),
                       ),
                     ],
                   ),
                 ),
+                const SizedBox(width: 12),
+                Switch(
+                  value: _isFixed,
+                  onChanged: (value) => setState(() => _isFixed = value),
+                  activeColor: AppTheme.secondaryColor,
+                  activeTrackColor: AppTheme.secondaryColor.withOpacity(0.3),
+                  inactiveThumbColor: Colors.grey.shade400,
+                  inactiveTrackColor: Colors.grey.shade200,
+                ),
               ],
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: _isFixed
+                    ? AppTheme.secondaryColor.withOpacity(0.1)
+                    : Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: _isFixed
+                      ? AppTheme.secondaryColor.withOpacity(0.3)
+                      : Colors.blue.withOpacity(0.3),
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    _isFixed ? Icons.autorenew : Icons.trending_up,
+                    size: 16,
+                    color: _isFixed
+                        ? AppTheme.primaryColor
+                        : Colors.blue.shade700,
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      _isFixed
+                          ? '${_selectedType == 'gasto' ? 'Gasto' : 'Ingreso'} RECURRENTE'
+                          : '${_selectedType == 'gasto' ? 'Gasto' : 'Ingreso'} OCASIONAL',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: _isFixed
+                            ? AppTheme.primaryColor
+                            : Colors.blue.shade700,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),

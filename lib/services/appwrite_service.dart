@@ -100,14 +100,17 @@ class AppWriteService {
     DateTime? endDate,
   }) async {
     try {
-      List<String> queries = ['equal("userId", "$userId")'];
+      List<String> queries = [Query.equal('userId', userId)];
 
       if (startDate != null && endDate != null) {
         queries.add(
-          'greaterThanEqual("date", "${startDate.toIso8601String()}")',
+          Query.greaterThanEqual('date', startDate.toIso8601String()),
         );
-        queries.add('lessThanEqual("date", "${endDate.toIso8601String()}")');
+        queries.add(Query.lessThanEqual('date', endDate.toIso8601String()));
       }
+
+      // Ordenar por fecha descendente (más reciente primero)
+      queries.add(Query.orderDesc('date'));
 
       final result = await databases.listDocuments(
         databaseId: Env.appwriteDatabaseId,
@@ -146,6 +149,9 @@ class AppWriteService {
           Query.equal('userId', userId),
           Query.greaterThanEqual('date', startDate.toIso8601String()),
           Query.lessThanEqual('date', adjustedEndDate.toIso8601String()),
+          Query.orderDesc(
+            'date',
+          ), // Ordenar por fecha descendente (más reciente primero)
         ],
       );
 

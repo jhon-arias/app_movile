@@ -19,18 +19,18 @@ class RecentTransactionsWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 1,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       child: Column(
         children: [
           // Header
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              color: AppTheme.primaryColor.withOpacity(0.1),
+              color: AppTheme.primaryColor.withOpacity(0.08),
               borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(12),
-                topRight: Radius.circular(12),
+                topLeft: Radius.circular(8),
+                topRight: Radius.circular(8),
               ),
             ),
             child: Row(
@@ -38,32 +38,44 @@ class RecentTransactionsWidget extends StatelessWidget {
                 const Icon(
                   Icons.history,
                   color: AppTheme.primaryColor,
-                  size: 20,
+                  size: 16,
                 ),
-                const SizedBox(width: 8),
-                const Text(
-                  'Últimos 5 días',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.primaryColor,
-                  ),
-                ),
-                const Spacer(),
-                if (transactions.isNotEmpty)
-                  Text(
-                    'Total: \$${_calculateTotal().toStringAsFixed(2)}',
-                    style: const TextStyle(
+                const SizedBox(width: 6),
+                const Expanded(
+                  flex: 2,
+                  child: Text(
+                    'Últimos registros',
+                    style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                       color: AppTheme.primaryColor,
                     ),
                   ),
-                const SizedBox(width: 8),
+                ),
+                if (transactions.isNotEmpty)
+                  Expanded(
+                    flex: 3,
+                    child: Text(
+                      'Total: \$${_calculateTotal().toStringAsFixed(0)}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: AppTheme.primaryColor,
+                      ),
+                      textAlign: TextAlign.end,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                const SizedBox(width: 2),
                 IconButton(
-                  icon: const Icon(Icons.refresh, size: 20),
+                  icon: const Icon(Icons.refresh, size: 16),
                   onPressed: onRefresh,
-                  color: AppTheme.primaryColor,
+                  style: IconButton.styleFrom(
+                    foregroundColor: AppTheme.primaryColor,
+                    backgroundColor: Colors.transparent,
+                    minimumSize: const Size(24, 24),
+                    padding: const EdgeInsets.all(4),
+                  ),
                   tooltip: 'Actualizar',
                 ),
               ],
@@ -108,31 +120,48 @@ class RecentTransactionsWidget extends StatelessWidget {
 
   Widget _buildEmptyState() {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.receipt_long, size: 40, color: Colors.grey.shade400),
-          const SizedBox(height: 8),
-          const Text(
-            'No hay transacciones\nen los últimos 5 días',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 12, color: Colors.grey),
-          ),
-        ],
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.receipt_long, size: 32, color: Colors.grey.shade400),
+            const SizedBox(height: 6),
+            const Text(
+              'No hay transacciones\nen los últimos 5 días',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 11, color: Colors.grey),
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildTransactionsList() {
-    // Ordenar por fecha más reciente primero
+    // Ordenar por fecha y hora más reciente primero (doble verificación)
     final sortedTransactions = List<Transaction>.from(transactions)
-      ..sort((a, b) => b.date.compareTo(a.date));
+      ..sort((a, b) {
+        // Primero ordenar por fecha de transacción
+        int comparison = b.date.compareTo(a.date);
+        if (comparison != 0) return comparison;
+
+        // Si las fechas son iguales, ordenar por fecha de creación si está disponible
+        if (a.createdAt != null && b.createdAt != null) {
+          return b.createdAt!.compareTo(a.createdAt!);
+        }
+
+        return 0;
+      });
+
+    // Tomar solo las 5 transacciones más recientes
+    final recentTransactions = sortedTransactions.take(5).toList();
 
     return ListView.builder(
       padding: const EdgeInsets.all(0),
-      itemCount: sortedTransactions.length,
+      itemCount: recentTransactions.length,
       itemBuilder: (context, index) {
-        final transaction = sortedTransactions[index];
+        final transaction = recentTransactions[index];
         return _buildTransactionItem(transaction);
       },
     );
@@ -143,48 +172,52 @@ class RecentTransactionsWidget extends StatelessWidget {
     final dateFormat = DateFormat('dd/MM');
     final timeFormat = DateFormat('HH:mm');
 
+    // Convertir a UTC para mostrar la hora en UTC
+    final utcDate = transaction.date.toUtc();
+
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.shade200, width: 1),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: Colors.grey.shade200, width: 0.5),
       ),
       child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        dense: true,
         leading: Container(
-          width: 40,
-          height: 40,
+          width: 32,
+          height: 32,
           decoration: BoxDecoration(
             color: isExpense ? Colors.red.shade50 : Colors.green.shade50,
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(6),
             border: Border.all(
               color: isExpense ? Colors.red.shade200 : Colors.green.shade200,
+              width: 0.5,
             ),
           ),
           child: Icon(
             isExpense ? Icons.arrow_upward : Icons.arrow_downward,
             color: isExpense ? Colors.red : Colors.green,
-            size: 20,
+            size: 16,
           ),
         ),
         title: Text(
           transaction.description,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
         ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SizedBox(height: 2),
             Text(
               transaction.categoryName,
-              style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+              style: TextStyle(fontSize: 11, color: AppTheme.textSecondary),
             ),
             Text(
-              '${dateFormat.format(transaction.date)} ${timeFormat.format(transaction.date)}',
-              style: TextStyle(fontSize: 10, color: Colors.grey.shade500),
+              '${dateFormat.format(utcDate)} ${timeFormat.format(utcDate)} UTC',
+              style: TextStyle(fontSize: 9, color: Colors.grey.shade500),
             ),
           ],
         ),
@@ -193,27 +226,28 @@ class RecentTransactionsWidget extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             Text(
-              '\$${transaction.amount.toStringAsFixed(2)}',
+              '\$${transaction.amount.toStringAsFixed(0)}',
               style: TextStyle(
-                fontSize: 14,
+                fontSize: 13,
                 fontWeight: FontWeight.w600,
                 color: isExpense ? Colors.red : Colors.green,
               ),
             ),
-            const SizedBox(height: 2),
+            const SizedBox(height: 1),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
               decoration: BoxDecoration(
                 color: _getTypeColor(transaction.type).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: BorderRadius.circular(3),
                 border: Border.all(
                   color: _getTypeColor(transaction.type).withOpacity(0.3),
+                  width: 0.5,
                 ),
               ),
               child: Text(
                 _getTypeLabel(transaction.type),
                 style: TextStyle(
-                  fontSize: 8,
+                  fontSize: 7,
                   color: _getTypeColor(transaction.type),
                   fontWeight: FontWeight.w600,
                 ),
