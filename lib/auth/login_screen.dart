@@ -8,7 +8,7 @@ class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
 
   @override
-  _LoginScreenState createState() => _LoginScreenState();
+  State<LoginScreen> createState() => _LoginScreenState();
 }
 
 class _LoginScreenState extends State<LoginScreen> {
@@ -20,7 +20,10 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    _checkActiveSession();
+    // Verificar sesión después de que la pantalla esté construida
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkActiveSession();
+    });
   }
 
   Future<void> _checkActiveSession() async {
@@ -39,10 +42,42 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
+  void _clearError() {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    if (authService.errorMessage != null) {
+      authService.clearError();
+    }
+  }
+
+  Future<void> _submitForm(AuthService authService) async {
+    if (!_formKey.currentState!.validate()) return;
+
+    FocusScope.of(context).unfocus();
+
+    final success = _isLogin
+        ? await authService.loginWithEmail(
+            _emailController.text,
+            _passwordController.text,
+          )
+        : await authService.registerWithEmail(
+            _emailController.text,
+            _passwordController.text,
+          );
+
+    if (success && mounted) {
+      _navigateToMainScreen();
+    }
+  }
+
+  void _toggleAuthMode() {
+    _clearError();
+    setState(() {
+      _isLogin = !_isLogin;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    final authService = Provider.of<AuthService>(context);
-
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
       body: SafeArea(
@@ -53,7 +88,11 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 20),
               _buildAppHeader(),
               const SizedBox(height: 40),
-              _buildLoginForm(authService),
+              Consumer<AuthService>(
+                builder: (context, authService, child) {
+                  return _buildLoginForm(authService);
+                },
+              ),
               const SizedBox(height: 20),
               _buildFooter(),
             ],
@@ -154,13 +193,12 @@ class _LoginScreenState extends State<LoginScreen> {
       decoration: const InputDecoration(
         labelText: 'Email',
         prefixIcon: Icon(Icons.email, color: AppTheme.primaryColor),
+        hintText: 'ejemplo@correo.com',
       ),
+      onChanged: (_) => _clearError(),
       validator: (value) {
         if (value == null || value.isEmpty) {
           return 'Por favor ingrese su email';
-        }
-        if (!value.contains('@')) {
-          return 'Ingrese un email válido';
         }
         return null;
       },
@@ -171,19 +209,47 @@ class _LoginScreenState extends State<LoginScreen> {
     return TextFormField(
       controller: _passwordController,
       obscureText: true,
-      decoration: const InputDecoration(
+      decoration: InputDecoration(
         labelText: 'Contraseña',
-        prefixIcon: Icon(Icons.lock, color: AppTheme.primaryColor),
+        prefixIcon: const Icon(Icons.lock, color: AppTheme.primaryColor),
+        hintText: 'Mínimo 6 caracteres',
+        suffixIcon: IconButton(
+          icon: const Icon(Icons.help_outline, size: 18),
+          onPressed: _showPasswordRequirements,
+          color: AppTheme.textSecondary,
+        ),
       ),
+      onChanged: (_) => _clearError(),
       validator: (value) {
         if (value == null || value.isEmpty) {
           return 'Por favor ingrese su contraseña';
         }
-        if (value.length < 6) {
-          return 'La contraseña debe tener al menos 6 caracteres';
-        }
         return null;
       },
+    );
+  }
+
+  void _showPasswordRequirements() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Requisitos de Contraseña'),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('• Mínimo 6 caracteres'),
+            Text('• Máximo 50 caracteres'),
+            Text('• Puede incluir letras y números'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Entendido'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -197,14 +263,35 @@ class _LoginScreenState extends State<LoginScreen> {
         border: Border.all(color: Colors.red.shade200),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(Icons.error_outline, color: Colors.red.shade600, size: 20),
           const SizedBox(width: 8),
           Expanded(
-            child: Text(
-              message,
-              style: TextStyle(color: Colors.red.shade700, fontSize: 14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _isLogin ? 'Error al iniciar sesión' : 'Error al registrarse',
+                  style: TextStyle(
+                    color: Colors.red.shade700,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  message,
+                  style: TextStyle(color: Colors.red.shade700, fontSize: 12),
+                ),
+              ],
             ),
+          ),
+          IconButton(
+            icon: Icon(Icons.close, size: 16, color: Colors.red.shade600),
+            onPressed: _clearError,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
           ),
         ],
       ),
@@ -218,23 +305,7 @@ class _LoginScreenState extends State<LoginScreen> {
       child: ElevatedButton(
         onPressed: authService.isLoading
             ? null
-            : () async {
-                if (_formKey.currentState!.validate()) {
-                  final success = _isLogin
-                      ? await authService.loginWithEmail(
-                          _emailController.text,
-                          _passwordController.text,
-                        )
-                      : await authService.registerWithEmail(
-                          _emailController.text,
-                          _passwordController.text,
-                        );
-
-                  if (success && mounted) {
-                    _navigateToMainScreen();
-                  }
-                }
-              },
+            : () => _submitForm(authService),
         child: authService.isLoading
             ? const SizedBox(
                 width: 20,
@@ -255,15 +326,9 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // ELIMINADO: _buildGoogleButton - Ya no existe
-
   Widget _buildToggleAuthText() {
     return TextButton(
-      onPressed: () {
-        setState(() {
-          _isLogin = !_isLogin;
-        });
-      },
+      onPressed: _toggleAuthMode,
       child: Text(
         _isLogin
             ? '¿No tienes cuenta? Regístrate'
