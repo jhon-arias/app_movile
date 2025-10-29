@@ -7,6 +7,7 @@ import 'package:gastos_app/screens/statistics_screen.dart';
 import 'package:gastos_app/widgets/transaction_form.dart';
 import 'package:gastos_app/widgets/recent_transactions.dart';
 import 'package:gastos_app/app/theme.dart';
+import 'package:gastos_app/widgets/app_logo.dart';
 
 class AddTransactionScreen extends StatefulWidget {
   const AddTransactionScreen({Key? key}) : super(key: key);
@@ -125,11 +126,16 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
-        title: const Row(
+        title: Row(
           children: [
-            Icon(Icons.account_balance_wallet, size: 24),
-            SizedBox(width: 8),
-            Text('Gestión de Finanzas'),
+            AppLogo(
+              size: 24,
+              backgroundColor: Colors.white.withOpacity(0.1),
+              fallbackIconColor: Colors.white,
+              circular: false,
+            ),
+            const SizedBox(width: 8),
+            const Text('Gestión de Finanzas'),
           ],
         ),
         backgroundColor: AppTheme.primaryColor,

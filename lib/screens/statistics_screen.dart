@@ -3,6 +3,7 @@ import 'package:syncfusion_flutter_charts/charts.dart';
 import 'package:intl/intl.dart';
 import 'package:gastos_app/models/transaction_model.dart';
 import 'package:gastos_app/services/appwrite_service.dart';
+import 'package:gastos_app/widgets/app_logo.dart';
 
 class StatisticsScreen extends StatefulWidget {
   const StatisticsScreen({Key? key}) : super(key: key);
@@ -315,7 +316,19 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: const Text('Estadísticas'),
+        title: Row(
+          children: [
+            AppLogo(
+              size: 24,
+              backgroundColor: Colors.white.withOpacity(0.1),
+              fallbackIconColor: Colors.white,
+              fallbackIcon: Icons.bar_chart,
+              circular: false,
+            ),
+            const SizedBox(width: 8),
+            const Text('Estadísticas'),
+          ],
+        ),
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
       ),

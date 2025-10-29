@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:gastos_app/auth/auth_service.dart';
 import 'package:gastos_app/screens/add_transaction_screen.dart';
 import 'package:gastos_app/app/theme.dart';
+import 'package:gastos_app/widgets/app_logo.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -20,10 +21,18 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    // Verificar sesión después de que la pantalla esté construida
+    // Precargar imágenes para evitar delays en las transiciones
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _precacheImages();
       _checkActiveSession();
     });
+  }
+
+  void _precacheImages() {
+    if (mounted) {
+      precacheImage(const AssetImage('assets/images/logo.png'), context);
+      precacheImage(const AssetImage('assets/images/icon.png'), context);
+    }
   }
 
   Future<void> _checkActiveSession() async {
@@ -105,24 +114,9 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _buildAppHeader() {
     return Column(
       children: [
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: AppTheme.primaryColor,
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: AppTheme.primaryColor.withOpacity(0.3),
-                blurRadius: 15,
-                offset: const Offset(0, 5),
-              ),
-            ],
-          ),
-          child: const Icon(
-            Icons.account_balance_wallet,
-            size: 50,
-            color: Colors.white,
-          ),
+        AppLogoWithShadow(
+          size: 80,
+          shadowColor: AppTheme.primaryColor.withOpacity(0.3),
         ),
         const SizedBox(height: 20),
         const Text(
