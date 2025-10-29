@@ -643,7 +643,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
             Expanded(
               child: SfCircularChart(
                 series: <CircularSeries>[
-                  PieSeries<ChartData, String>(
+                  DoughnutSeries<ChartData, String>(
                     dataSource: data,
                     xValueMapper: (ChartData data, _) => data.x,
                     yValueMapper: (ChartData data, _) => data.y,
@@ -663,6 +663,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                     ),
                     dataLabelMapper: (ChartData data, _) =>
                         '${data.x}\n\$${NumberFormat.compact().format(data.y)}',
+                    innerRadius: '40%',
                   ),
                 ],
               ),
