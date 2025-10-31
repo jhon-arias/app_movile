@@ -17,11 +17,12 @@ class _TransactionFormState extends State<TransactionForm> {
   final _descriptionController = TextEditingController();
 
   String _selectedType = 'gasto';
-  String _selectedCategory = 'otros';
+  String _selectedCategory = 'otros_gastos'; // Cambiar a otros_gastos
   bool _isFixed = false;
   DateTime _selectedDate = DateTime.now();
 
-  final List<Map<String, String>> _categories = [
+  // Categorías para gastos
+  final List<Map<String, String>> _expenseCategories = [
     {'value': 'ropa', 'label': 'Ropa'},
     {'value': 'salud', 'label': 'Salud'},
     {'value': 'vivienda', 'label': 'Vivienda'},
@@ -31,14 +32,46 @@ class _TransactionFormState extends State<TransactionForm> {
     {'value': 'educacion', 'label': 'Educación'},
     {'value': 'servicios', 'label': 'Servicios'},
     {'value': 'ahorro', 'label': 'Ahorro'},
-    {'value': 'otros', 'label': 'Otros'},
+    {'value': 'otros_gastos', 'label': 'Otros Gastos'},
   ];
+
+  // Categorías para ingresos
+  final List<Map<String, String>> _incomeCategories = [
+    {'value': 'remuneracion', 'label': 'Remuneración'},
+    {'value': 'freelance', 'label': 'Freelance'},
+    {'value': 'ventas', 'label': 'Ventas'},
+    {'value': 'prestamo_cobrados', 'label': 'Préstamo Cobrados'},
+    {'value': 'comisiones', 'label': 'Comisiones'},
+    {'value': 'renta', 'label': 'Renta'},
+    {'value': 'dividendos', 'label': 'Dividendos'},
+    {'value': 'intereses_ganados', 'label': 'Intereses Ganados'},
+    {'value': 'reembolsos', 'label': 'Reembolsos'},
+    {'value': 'otros_ingresos', 'label': 'Otros Ingresos'},
+  ];
+
+  // Obtener las categorías según el tipo seleccionado
+  List<Map<String, String>> get _currentCategories {
+    return _selectedType == 'gasto' ? _expenseCategories : _incomeCategories;
+  }
 
   @override
   void dispose() {
     _amountController.dispose();
     _descriptionController.dispose();
     super.dispose();
+  }
+
+  void _onTypeChanged(String newType) {
+    setState(() {
+      _selectedType = newType;
+      // Cambiar la categoría por defecto según el tipo
+      if (newType == 'gasto') {
+        _selectedCategory = 'otros_gastos'; // Categoría por defecto para gastos
+      } else {
+        _selectedCategory =
+            'otros_ingresos'; // Categoría por defecto para ingresos
+      }
+    });
   }
 
   Future<void> _selectDate(BuildContext context) async {
@@ -78,7 +111,7 @@ class _TransactionFormState extends State<TransactionForm> {
 
     setState(() {
       _selectedType = 'gasto';
-      _selectedCategory = 'otros';
+      _selectedCategory = 'otros_gastos'; // Usar otros_gastos
       _isFixed = false;
       _selectedDate = DateTime.now();
     });
@@ -105,8 +138,9 @@ class _TransactionFormState extends State<TransactionForm> {
   }
 
   String _getCategoryLabel() {
-    return _categories.firstWhere(
+    return _currentCategories.firstWhere(
       (cat) => cat['value'] == _selectedCategory,
+      orElse: () => {'value': 'otros_gastos', 'label': 'Otros Gastos'},
     )['label']!;
   }
 
@@ -232,7 +266,7 @@ class _TransactionFormState extends State<TransactionForm> {
     bool isSelected,
   ) {
     return GestureDetector(
-      onTap: () => setState(() => _selectedType = value),
+      onTap: () => _onTypeChanged(value),
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
         decoration: BoxDecoration(
@@ -372,7 +406,7 @@ class _TransactionFormState extends State<TransactionForm> {
         filled: true,
         fillColor: Colors.white,
       ),
-      items: _categories.map((category) {
+      items: _currentCategories.map((category) {
         return DropdownMenuItem(
           value: category['value'],
           child: Text(category['label']!),
