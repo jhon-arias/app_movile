@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:gastos_app/models/transaction_model.dart';
 import 'package:gastos_app/services/appwrite_service.dart';
 import 'package:gastos_app/widgets/app_logo.dart';
+import 'package:gastos_app/mixins/auto_logout_mixin.dart';
 
 class StatisticsScreen extends StatefulWidget {
   const StatisticsScreen({Key? key}) : super(key: key);
@@ -12,7 +13,8 @@ class StatisticsScreen extends StatefulWidget {
   State<StatisticsScreen> createState() => _StatisticsScreenState();
 }
 
-class _StatisticsScreenState extends State<StatisticsScreen> {
+class _StatisticsScreenState extends State<StatisticsScreen>
+    with AutoLogoutMixin {
   final AppWriteService _appWriteService = AppWriteService();
   List<Transaction> _transactions = [];
   String? _currentUserId;
@@ -332,7 +334,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
       ),
-      body: _buildBody(),
+      body: buildWithActivityDetection(child: _buildBody()),
     );
   }
 
