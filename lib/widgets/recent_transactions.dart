@@ -3,7 +3,7 @@ import 'package:gastos_app/models/transaction_model.dart';
 import 'package:gastos_app/app/theme.dart';
 import 'package:intl/intl.dart';
 
-class RecentTransactionsWidget extends StatelessWidget {
+class RecentTransactionsWidget extends StatefulWidget {
   final List<Transaction> transactions;
   final bool isLoading;
   final VoidCallback onRefresh;
@@ -16,80 +16,100 @@ class RecentTransactionsWidget extends StatelessWidget {
   }) : super(key: key);
 
   @override
+  State<RecentTransactionsWidget> createState() =>
+      _RecentTransactionsWidgetState();
+}
+
+class _RecentTransactionsWidgetState extends State<RecentTransactionsWidget> {
+  bool _isExpanded = false;
+
+  @override
   Widget build(BuildContext context) {
     return Card(
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       elevation: 1,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       child: Column(
+        mainAxisSize: MainAxisSize.min, // Importante: se ajusta al contenido
         children: [
-          // Header
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: AppTheme.primaryColor.withOpacity(0.08),
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(8),
-                topRight: Radius.circular(8),
+          // Header con funcionalidad de click para expandir/contraer
+          GestureDetector(
+            onTap: () {
+              setState(() {
+                _isExpanded = !_isExpanded;
+              });
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppTheme.primaryColor.withOpacity(0.08),
+                borderRadius: _isExpanded
+                    ? const BorderRadius.only(
+                        topLeft: Radius.circular(8),
+                        topRight: Radius.circular(8),
+                      )
+                    : BorderRadius.circular(
+                        8,
+                      ), // Bordes redondeados completos cuando está contraído
               ),
-            ),
-            child: Row(
-              children: [
-                const Icon(
-                  Icons.history,
-                  color: AppTheme.primaryColor,
-                  size: 16,
-                ),
-                const SizedBox(width: 6),
-                const Expanded(
-                  flex: 2,
-                  child: Text(
-                    'Últimos registros',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.primaryColor,
-                    ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.history,
+                    color: AppTheme.primaryColor,
+                    size: 16,
                   ),
-                ),
-                if (transactions.isNotEmpty)
-                  Expanded(
-                    flex: 3,
+                  const SizedBox(width: 6),
+                  const Expanded(
                     child: Text(
-                      'Total: \$${_calculateTotal().toStringAsFixed(0)}',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
+                      'Últimos registros',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
                         color: AppTheme.primaryColor,
                       ),
-                      textAlign: TextAlign.end,
-                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                const SizedBox(width: 2),
-                IconButton(
-                  icon: const Icon(Icons.refresh, size: 16),
-                  onPressed: onRefresh,
-                  style: IconButton.styleFrom(
-                    foregroundColor: AppTheme.primaryColor,
-                    backgroundColor: Colors.transparent,
-                    minimumSize: const Size(24, 24),
-                    padding: const EdgeInsets.all(4),
+                  Icon(
+                    _isExpanded ? Icons.expand_less : Icons.expand_more,
+                    color: AppTheme.primaryColor,
+                    size: 20,
                   ),
-                  tooltip: 'Actualizar',
-                ),
-              ],
+                  const SizedBox(width: 2),
+                  IconButton(
+                    icon: const Icon(Icons.refresh, size: 16),
+                    onPressed: widget.onRefresh,
+                    style: IconButton.styleFrom(
+                      foregroundColor: AppTheme.primaryColor,
+                      backgroundColor: Colors.transparent,
+                      minimumSize: const Size(24, 24),
+                      padding: const EdgeInsets.all(4),
+                    ),
+                    tooltip: 'Actualizar',
+                  ),
+                ],
+              ),
             ),
           ),
 
-          // Lista de transacciones
-          Expanded(
-            child: isLoading
-                ? _buildLoading()
-                : transactions.isEmpty
-                ? _buildEmptyState()
-                : _buildTransactionsList(),
-          ),
+          // Lista de transacciones (solo visible cuando está expandido)
+          if (_isExpanded)
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              height: widget.isLoading
+                  ? 80
+                  : widget.transactions.isEmpty
+                  ? 100
+                  : (widget.transactions.length * 50.0).clamp(
+                      80.0,
+                      180.0,
+                    ), // Altura más pequeña con elementos compactos
+              child: widget.isLoading
+                  ? _buildLoading()
+                  : widget.transactions.isEmpty
+                  ? _buildEmptyState()
+                  : _buildTransactionsList(),
+            ),
         ],
       ),
     );
@@ -140,7 +160,7 @@ class RecentTransactionsWidget extends StatelessWidget {
 
   Widget _buildTransactionsList() {
     // Ordenar por fecha y hora más reciente primero (doble verificación)
-    final sortedTransactions = List<Transaction>.from(transactions)
+    final sortedTransactions = List<Transaction>.from(widget.transactions)
       ..sort((a, b) {
         // Primero ordenar por fecha de transacción
         int comparison = b.date.compareTo(a.date);
@@ -159,6 +179,8 @@ class RecentTransactionsWidget extends StatelessWidget {
 
     return ListView.builder(
       padding: const EdgeInsets.all(0),
+      shrinkWrap: true, // Ajustar al contenido
+      physics: const NeverScrollableScrollPhysics(), // Desactivar scroll propio
       itemCount: recentTransactions.length,
       itemBuilder: (context, index) {
         final transaction = recentTransactions[index];
@@ -176,21 +198,22 @@ class RecentTransactionsWidget extends StatelessWidget {
     final utcDate = transaction.date.toUtc();
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(4),
         border: Border.all(color: Colors.grey.shade200, width: 0.5),
       ),
       child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 0),
         dense: true,
+        minLeadingWidth: 28,
         leading: Container(
-          width: 32,
-          height: 32,
+          width: 28,
+          height: 28,
           decoration: BoxDecoration(
             color: isExpense ? Colors.red.shade50 : Colors.green.shade50,
-            borderRadius: BorderRadius.circular(6),
+            borderRadius: BorderRadius.circular(4),
             border: Border.all(
               color: isExpense ? Colors.red.shade200 : Colors.green.shade200,
               width: 0.5,
@@ -199,7 +222,7 @@ class RecentTransactionsWidget extends StatelessWidget {
           child: Icon(
             isExpense ? Icons.arrow_upward : Icons.arrow_downward,
             color: isExpense ? Colors.red : Colors.green,
-            size: 16,
+            size: 14,
           ),
         ),
         title: Text(
@@ -287,15 +310,5 @@ class RecentTransactionsWidget extends StatelessWidget {
       default:
         return 'Otro';
     }
-  }
-
-  double _calculateTotal() {
-    return transactions.fold(0.0, (sum, transaction) {
-      if (transaction.type.contains('gasto')) {
-        return sum - transaction.amount;
-      } else {
-        return sum + transaction.amount;
-      }
-    });
   }
 }

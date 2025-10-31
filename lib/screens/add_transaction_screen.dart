@@ -155,23 +155,19 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       ),
       body: Column(
         children: [
-          // Formulario de transacción
+          // Formulario de transacción - ocupa el espacio restante disponible
           Expanded(
-            flex: 2,
-            child: Padding(
+            child: SingleChildScrollView(
               padding: const EdgeInsets.all(16.0),
               child: TransactionForm(onSubmit: _addTransaction),
             ),
           ),
 
-          // Transacciones recientes
-          Expanded(
-            flex: 1,
-            child: RecentTransactionsWidget(
-              transactions: _recentTransactions,
-              isLoading: _isLoadingRecent,
-              onRefresh: _loadRecentTransactions,
-            ),
+          // Transacciones recientes - siempre en la parte inferior
+          RecentTransactionsWidget(
+            transactions: _recentTransactions,
+            isLoading: _isLoadingRecent,
+            onRefresh: _loadRecentTransactions,
           ),
 
           _buildFooter(),
