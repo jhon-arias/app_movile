@@ -6,8 +6,8 @@ import 'package:gastos_app/auth/auth_service.dart';
 mixin AutoLogoutMixin<T extends StatefulWidget> on State<T> {
   Timer? _inactivityTimer;
   static const Duration _inactivityDuration = Duration(
-    minutes: 1,
-  ); // 1 minutos de inactividad
+    minutes: 3,
+  ); // 3 minutos de inactividad
 
   @override
   void initState() {

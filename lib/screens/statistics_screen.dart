@@ -393,16 +393,18 @@ class _StatisticsScreenState extends State<StatisticsScreen>
   }
 
   Widget _buildContent() {
-    return Column(
-      children: [
-        _buildDateFilters(),
-        const SizedBox(height: 16),
-        _buildSummaryCards(),
-        const SizedBox(height: 16),
-        _buildChartSelector(),
-        const SizedBox(height: 16),
-        Expanded(child: _buildSelectedChart()),
-      ],
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          _buildDateFilters(),
+          const SizedBox(height: 16),
+          _buildSummaryCards(),
+          const SizedBox(height: 16),
+          _buildChartSelector(),
+          const SizedBox(height: 16),
+          _buildSelectedChart(), // Sin Expanded aquí, ya que el chart tiene altura fija
+        ],
+      ),
     );
   }
 
@@ -535,30 +537,38 @@ class _StatisticsScreenState extends State<StatisticsScreen>
   }
 
   Widget _buildChartSelector() {
-    return Padding(
+    return Container(
+      height: 50, // Altura fija para evitar cambios de tamaño
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Wrap(
-        spacing: 8,
-        runSpacing: 8,
+      child: Row(
         children: List.generate(_chartTypes.length, (index) {
-          return ChoiceChip(
-            label: Text(
-              _chartTypes[index],
-              style: TextStyle(
-                color: _selectedChartIndex == index
-                    ? Colors.black
-                    : Colors.black87,
+          return Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(
+                right: index < _chartTypes.length - 1 ? 8.0 : 0,
               ),
-            ),
-            selected: _selectedChartIndex == index,
-            onSelected: (selected) {
-              setState(() => _selectedChartIndex = index);
-            },
-            selectedColor: const Color(0xFF90EE90),
-            backgroundColor: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-              side: BorderSide(color: Colors.grey.shade300),
+              child: ChoiceChip(
+                label: Text(
+                  _chartTypes[index],
+                  style: TextStyle(
+                    color: _selectedChartIndex == index
+                        ? Colors.black
+                        : Colors.black87,
+                    fontSize: 12, // Reducir ligeramente el tamaño de fuente
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                selected: _selectedChartIndex == index,
+                onSelected: (selected) {
+                  setState(() => _selectedChartIndex = index);
+                },
+                selectedColor: const Color(0xFF90EE90),
+                backgroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  side: BorderSide(color: Colors.grey.shade300),
+                ),
+              ),
             ),
           );
         }),
@@ -573,7 +583,10 @@ class _StatisticsScreenState extends State<StatisticsScreen>
 
     return Padding(
       padding: const EdgeInsets.all(16.0),
-      child: _buildChartByIndex(_selectedChartIndex),
+      child: SizedBox(
+        height: 450, // Altura fija para todos los gráficos
+        child: _buildChartByIndex(_selectedChartIndex),
+      ),
     );
   }
 
@@ -597,43 +610,101 @@ class _StatisticsScreenState extends State<StatisticsScreen>
     }
 
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            const Text(
-              'Gastos por Categoría',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Expanded(
-              child: SfCircularChart(
-                series: <CircularSeries>[
-                  DoughnutSeries<ChartData, String>(
-                    dataSource: data,
-                    xValueMapper: (ChartData data, _) => data.x,
-                    yValueMapper: (ChartData data, _) => data.y,
-                    pointColorMapper: (ChartData data, _) => data.color,
-                    dataLabelSettings: const DataLabelSettings(
-                      isVisible: true,
-                      labelPosition: ChartDataLabelPosition.outside,
-                      textStyle: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.black87,
-                      ),
-                      connectorLineSettings: ConnectorLineSettings(
-                        type: ConnectorType.curve,
-                        length: '10%',
-                      ),
+      elevation: 8,
+      shadowColor: Colors.grey.withOpacity(0.3),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Colors.white, Colors.grey.shade50],
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.pie_chart, color: Colors.blue.shade600, size: 20),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Gastos por Categoría',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF2C3E50),
                     ),
-                    dataLabelMapper: (ChartData data, _) =>
-                        '${data.x}\n\$${NumberFormat.compact().format(data.y)}',
                   ),
                 ],
               ),
-            ),
-          ],
+              const SizedBox(height: 16),
+              Expanded(
+                child: SfCircularChart(
+                  margin: const EdgeInsets.all(5),
+                  tooltipBehavior: TooltipBehavior(
+                    enable: true,
+                    format: 'point.x: \$point.y',
+                    elevation: 3,
+                    color: const Color(0xFF2C3E50),
+                    textStyle: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                  series: <CircularSeries>[
+                    DoughnutSeries<ChartData, String>(
+                      dataSource: data,
+                      xValueMapper: (ChartData data, _) => data.x,
+                      yValueMapper: (ChartData data, _) => data.y,
+                      pointColorMapper: (ChartData data, _) => data.color,
+                      innerRadius: '60%',
+                      radius: '85%',
+                      strokeColor: Colors.white,
+                      strokeWidth: 2,
+                      dataLabelSettings: const DataLabelSettings(
+                        isVisible: true,
+                        labelPosition: ChartDataLabelPosition.outside,
+                        textStyle: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF2C3E50),
+                        ),
+                        connectorLineSettings: ConnectorLineSettings(
+                          type: ConnectorType.curve,
+                          length: '15%',
+                          width: 2,
+                          color: Color(0xFF7F8C8D),
+                        ),
+                        overflowMode: OverflowMode.trim,
+                        useSeriesColor: false,
+                      ),
+                      dataLabelMapper: (ChartData dataPoint, _) {
+                        final total = data.fold<double>(
+                          0,
+                          (sum, item) => sum + item.y,
+                        );
+                        final percentage = (dataPoint.y / total * 100)
+                            .toStringAsFixed(1);
+                        return '$percentage%';
+                      },
+                      selectionBehavior: SelectionBehavior(
+                        enable: true,
+                        unselectedOpacity: 0.4,
+                        selectedBorderWidth: 3,
+                        selectedBorderColor: const Color(0xFF34495E),
+                      ),
+                      animationDuration: 1500,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -646,44 +717,105 @@ class _StatisticsScreenState extends State<StatisticsScreen>
     }
 
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            const Text(
-              'Distribución General',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Expanded(
-              child: SfCircularChart(
-                series: <CircularSeries>[
-                  DoughnutSeries<ChartData, String>(
-                    dataSource: data,
-                    xValueMapper: (ChartData data, _) => data.x,
-                    yValueMapper: (ChartData data, _) => data.y,
-                    pointColorMapper: (ChartData data, _) => data.color,
-                    dataLabelSettings: const DataLabelSettings(
-                      isVisible: true,
-                      labelPosition: ChartDataLabelPosition.outside,
-                      textStyle: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.black87,
-                      ),
-                      connectorLineSettings: ConnectorLineSettings(
-                        type: ConnectorType.curve,
-                        length: '10%',
-                      ),
+      elevation: 8,
+      shadowColor: Colors.grey.withOpacity(0.3),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Colors.white, Colors.green.shade50],
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.donut_large,
+                    color: Colors.green.shade600,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Distribución General',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF27AE60),
                     ),
-                    dataLabelMapper: (ChartData data, _) =>
-                        '${data.x}\n\$${NumberFormat.compact().format(data.y)}',
-                    innerRadius: '50%',
                   ),
                 ],
               ),
-            ),
-          ],
+              const SizedBox(height: 16),
+              Expanded(
+                child: SfCircularChart(
+                  margin: const EdgeInsets.all(5),
+                  tooltipBehavior: TooltipBehavior(
+                    enable: true,
+                    format: 'point.x: \$point.y',
+                    elevation: 3,
+                    color: const Color(0xFF27AE60),
+                    textStyle: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                  series: <CircularSeries>[
+                    DoughnutSeries<ChartData, String>(
+                      dataSource: data,
+                      xValueMapper: (ChartData data, _) => data.x,
+                      yValueMapper: (ChartData data, _) => data.y,
+                      pointColorMapper: (ChartData data, _) => data.color,
+                      innerRadius: '55%',
+                      radius: '85%',
+                      strokeColor: Colors.white,
+                      strokeWidth: 3,
+                      dataLabelSettings: const DataLabelSettings(
+                        isVisible: true,
+                        labelPosition: ChartDataLabelPosition.outside,
+                        textStyle: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF27AE60),
+                        ),
+                        connectorLineSettings: ConnectorLineSettings(
+                          type: ConnectorType.curve,
+                          length: '15%',
+                          width: 2,
+                          color: Color(0xFF52C4A0),
+                        ),
+                        overflowMode: OverflowMode.trim,
+                        useSeriesColor: false,
+                      ),
+                      dataLabelMapper: (ChartData dataPoint, _) {
+                        final total = data.fold<double>(
+                          0,
+                          (sum, item) => sum + item.y,
+                        );
+                        final percentage = (dataPoint.y / total * 100)
+                            .toStringAsFixed(1);
+                        return '$percentage%';
+                      },
+                      selectionBehavior: SelectionBehavior(
+                        enable: true,
+                        unselectedOpacity: 0.4,
+                        selectedBorderWidth: 4,
+                        selectedBorderColor: const Color(0xFF1E8449),
+                      ),
+                      animationDuration: 1500,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -696,92 +828,205 @@ class _StatisticsScreenState extends State<StatisticsScreen>
     }
 
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            const Text(
-              'Evolución Mensual',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Expanded(
-              child: SfCartesianChart(
-                primaryXAxis: CategoryAxis(
-                  labelStyle: const TextStyle(fontSize: 10),
-                ),
-                primaryYAxis: NumericAxis(
-                  numberFormat: NumberFormat.compact(),
-                  labelStyle: const TextStyle(fontSize: 10),
-                ),
-                legend: const Legend(
-                  isVisible: true,
-                  position: LegendPosition.bottom,
-                  textStyle: TextStyle(fontSize: 11),
-                ),
-                series: <CartesianSeries>[
-                  // Barras de gastos
-                  ColumnSeries<ChartData, String>(
-                    name: 'Gastos',
-                    dataSource: data['gastos']!,
-                    xValueMapper: (ChartData data, _) => data.x,
-                    yValueMapper: (ChartData data, _) => data.y,
-                    color: const Color(0xFFEF5350), // Rojo suave
-                    dataLabelSettings: const DataLabelSettings(
-                      isVisible: true,
-                      labelAlignment: ChartDataLabelAlignment.top,
-                      textStyle: TextStyle(
-                        fontSize: 8,
-                        color: Colors.black87,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    dataLabelMapper: (ChartData data, _) => data.y > 0
-                        ? '\$${NumberFormat.compact().format(data.y)}'
-                        : '',
+      elevation: 8,
+      shadowColor: Colors.grey.withOpacity(0.3),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Colors.white, Colors.purple.shade50],
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.trending_up,
+                    color: Colors.purple.shade600,
+                    size: 20,
                   ),
-                  // Barras de ingresos
-                  ColumnSeries<ChartData, String>(
-                    name: 'Ingresos',
-                    dataSource: data['ingresos']!,
-                    xValueMapper: (ChartData data, _) => data.x,
-                    yValueMapper: (ChartData data, _) => data.y,
-                    color: const Color(0xFF66BB6A), // Verde suave
-                    dataLabelSettings: const DataLabelSettings(
-                      isVisible: true,
-                      labelAlignment: ChartDataLabelAlignment.top,
-                      textStyle: TextStyle(
-                        fontSize: 8,
-                        color: Colors.black87,
-                        fontWeight: FontWeight.w500,
-                      ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Evolución Mensual',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF8E44AD),
                     ),
-                    dataLabelMapper: (ChartData data, _) => data.y > 0
-                        ? '\$${NumberFormat.compact().format(data.y)}'
-                        : '',
                   ),
                 ],
               ),
-            ),
-          ],
+              const SizedBox(height: 16),
+              Expanded(
+                child: SfCartesianChart(
+                  plotAreaBorderWidth: 0,
+                  primaryXAxis: CategoryAxis(
+                    labelStyle: const TextStyle(
+                      fontSize: 10,
+                      color: Color(0xFF2C3E50),
+                      fontWeight: FontWeight.w500,
+                    ),
+                    majorGridLines: const MajorGridLines(width: 0),
+                    axisLine: const AxisLine(width: 0),
+                  ),
+                  primaryYAxis: NumericAxis(
+                    numberFormat: NumberFormat.compact(),
+                    labelStyle: const TextStyle(
+                      fontSize: 10,
+                      color: Color(0xFF2C3E50),
+                      fontWeight: FontWeight.w500,
+                    ),
+                    majorGridLines: MajorGridLines(
+                      width: 1,
+                      color: Colors.grey.shade200,
+                    ),
+                    axisLine: const AxisLine(width: 0),
+                  ),
+                  legend: Legend(
+                    isVisible: true,
+                    position: LegendPosition.bottom,
+                    textStyle: const TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF2C3E50),
+                    ),
+                    height: '12%',
+                    itemPadding: 15,
+                    iconHeight: 12,
+                    iconWidth: 12,
+                  ),
+                  series: <CartesianSeries>[
+                    ColumnSeries<ChartData, String>(
+                      name: 'Gastos',
+                      dataSource: data['gastos']!,
+                      xValueMapper: (ChartData data, _) => data.x,
+                      yValueMapper: (ChartData data, _) => data.y,
+                      gradient: LinearGradient(
+                        colors: [
+                          const Color(0xFFFF6B6B).withOpacity(0.8),
+                          const Color(0xFFEE5A52),
+                        ],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                      ),
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(4),
+                        topRight: Radius.circular(4),
+                      ),
+                      spacing: 0.1,
+                      dataLabelSettings: const DataLabelSettings(
+                        isVisible: true,
+                        labelAlignment: ChartDataLabelAlignment.top,
+                        textStyle: TextStyle(
+                          fontSize: 8,
+                          color: Color(0xFF2C3E50),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      dataLabelMapper: (ChartData data, _) => data.y > 0
+                          ? '\$${NumberFormat.compact().format(data.y)}'
+                          : '',
+                      animationDuration: 1500,
+                    ),
+                    ColumnSeries<ChartData, String>(
+                      name: 'Ingresos',
+                      dataSource: data['ingresos']!,
+                      xValueMapper: (ChartData data, _) => data.x,
+                      yValueMapper: (ChartData data, _) => data.y,
+                      gradient: LinearGradient(
+                        colors: [
+                          const Color(0xFF4ECDC4).withOpacity(0.8),
+                          const Color(0xFF44A08D),
+                        ],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                      ),
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(4),
+                        topRight: Radius.circular(4),
+                      ),
+                      spacing: 0.1,
+                      dataLabelSettings: const DataLabelSettings(
+                        isVisible: true,
+                        labelAlignment: ChartDataLabelAlignment.top,
+                        textStyle: TextStyle(
+                          fontSize: 8,
+                          color: Color(0xFF2C3E50),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      dataLabelMapper: (ChartData data, _) => data.y > 0
+                          ? '\$${NumberFormat.compact().format(data.y)}'
+                          : '',
+                      animationDuration: 1500,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
   Widget _buildNoDataMessage(String message) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.bar_chart, size: 48, color: Colors.grey[400]),
-          const SizedBox(height: 16),
-          Text(
-            message,
-            style: const TextStyle(fontSize: 14, color: Colors.grey),
-            textAlign: TextAlign.center,
+    return Card(
+      elevation: 8,
+      shadowColor: Colors.grey.withOpacity(0.3),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Colors.white, Colors.grey.shade50],
           ),
-        ],
+        ),
+        padding: const EdgeInsets.all(40),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.bar_chart,
+                  size: 48,
+                  color: Colors.grey.shade400,
+                ),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                message,
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.grey.shade600,
+                  fontWeight: FontWeight.w500,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Agrega algunas transacciones para ver los gráficos',
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

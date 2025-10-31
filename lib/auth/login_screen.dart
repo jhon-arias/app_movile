@@ -26,10 +26,14 @@ class _LoginScreenState extends State<LoginScreen> {
   void initState() {
     super.initState();
     // Precargar imágenes para evitar delays en las transiciones
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       _precacheImages();
       _checkActiveSession();
-      _loadSavedCredentials(); // Cargar credenciales guardadas
+      // Limpiar credenciales guardadas al iniciar para evitar autocompletar test/demo
+      await SecureStorageService.clearCredentials();
+      Future.delayed(const Duration(milliseconds: 100), () {
+        _loadSavedCredentials();
+      });
     });
   }
 
@@ -53,16 +57,21 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _loadSavedCredentials() async {
     try {
       final credentials = await SecureStorageService.getSavedCredentials();
-      final isValid = await SecureStorageService.areCredentialsValid();
-
       if (mounted &&
+          credentials != null &&
           credentials['email'] != null &&
-          credentials['password'] != null &&
-          isValid) {
+          credentials['password'] != null) {
+        final email = credentials['email']!;
+        final password = credentials['password']!;
+        // Solo autocompletar si parecen credenciales reales
+        final isValid =
+            email.trim().isNotEmpty &&
+            password.trim().isNotEmpty &&
+            password.trim().length >= 6;
         setState(() {
-          _emailController.text = credentials['email']!;
-          _passwordController.text = credentials['password']!;
-          _rememberPassword = credentials['rememberMe'] == 'true';
+          _emailController.text = isValid ? email : '';
+          _passwordController.text = isValid ? password : '';
+          _rememberPassword = isValid;
         });
       }
     } catch (e) {
@@ -77,6 +86,7 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
+  // Método de debug para probar credenciales
   void _clearError() {
     final authService = Provider.of<AuthService>(context, listen: false);
     if (authService.errorMessage != null) {
@@ -102,13 +112,57 @@ class _LoginScreenState extends State<LoginScreen> {
     if (success && mounted) {
       // Guardar credenciales si está marcada la opción y es login exitoso
       if (_isLogin && _rememberPassword) {
-        await SecureStorageService.saveCredentials(
-          _emailController.text,
-          _passwordController.text,
-        );
+        try {
+          await SecureStorageService.saveCredentials(
+            _emailController.text,
+            _passwordController.text,
+          );
+
+          // Mostrar confirmación visual
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Row(
+                  children: [
+                    Icon(Icons.check_circle, color: Colors.white),
+                    SizedBox(width: 8),
+                    Text('Credenciales guardadas de forma segura'),
+                  ],
+                ),
+                backgroundColor: Colors.green,
+                duration: Duration(seconds: 2),
+              ),
+            );
+          }
+        } catch (e) {
+          print('Error al guardar credenciales: $e');
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Row(
+                  children: [
+                    const Icon(Icons.warning, color: Colors.white),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'No se pudieron guardar las credenciales: $e',
+                      ),
+                    ),
+                  ],
+                ),
+                backgroundColor: Colors.orange,
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          }
+        }
       } else if (!_rememberPassword) {
         // Si no está marcada la opción, limpiar credenciales guardadas
-        await SecureStorageService.clearCredentials();
+        try {
+          await SecureStorageService.clearCredentials();
+        } catch (e) {
+          print('Error al eliminar credenciales: $e');
+        }
       }
 
       _navigateToMainScreen();
@@ -224,11 +278,18 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _buildEmailField() {
     return TextFormField(
       controller: _emailController,
-      decoration: const InputDecoration(
+      decoration: InputDecoration(
         labelText: 'Email',
-        prefixIcon: Icon(Icons.email, color: AppTheme.primaryColor),
-        hintText: 'ejemplo@correo.com',
+        prefixIcon: const Icon(Icons.email, color: AppTheme.primaryColor),
+        hintText: 'Email',
+        hintStyle: TextStyle(
+          color: Colors.grey.shade500,
+          fontWeight: FontWeight.normal,
+        ),
       ),
+      style: const TextStyle(
+        fontWeight: FontWeight.normal,
+      ), // El texto ingresado no será en negrita
       onChanged: (_) => _clearError(),
       validator: (value) {
         if (value == null || value.isEmpty) {
@@ -246,34 +307,30 @@ class _LoginScreenState extends State<LoginScreen> {
       decoration: InputDecoration(
         labelText: 'Contraseña',
         prefixIcon: const Icon(Icons.lock, color: AppTheme.primaryColor),
-        hintText: 'Mínimo 6 caracteres',
-        suffixIcon: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            IconButton(
-              icon: Icon(
-                _isPasswordVisible ? Icons.visibility_off : Icons.visibility,
-                size: 18,
-                color: AppTheme.primaryColor,
-              ),
-              onPressed: () {
-                setState(() {
-                  _isPasswordVisible = !_isPasswordVisible;
-                });
-              },
-              tooltip: _isPasswordVisible
-                  ? 'Ocultar contraseña'
-                  : 'Mostrar contraseña',
-            ),
-            IconButton(
-              icon: const Icon(Icons.help_outline, size: 18),
-              onPressed: _showPasswordRequirements,
-              color: AppTheme.textSecondary,
-              tooltip: 'Ver requisitos de contraseña',
-            ),
-          ],
+        hintText: 'Contraseña',
+        hintStyle: TextStyle(
+          color: Colors.grey.shade500,
+          fontWeight: FontWeight.normal,
+        ),
+        suffixIcon: IconButton(
+          icon: Icon(
+            _isPasswordVisible ? Icons.visibility_off : Icons.visibility,
+            size: 18,
+            color: AppTheme.primaryColor,
+          ),
+          onPressed: () {
+            setState(() {
+              _isPasswordVisible = !_isPasswordVisible;
+            });
+          },
+          tooltip: _isPasswordVisible
+              ? 'Ocultar contraseña'
+              : 'Mostrar contraseña',
         ),
       ),
+      style: const TextStyle(
+        fontWeight: FontWeight.normal,
+      ), // El texto ingresado no será en negrita
       onChanged: (_) => _clearError(),
       validator: (value) {
         if (value == null || value.isEmpty) {
@@ -313,40 +370,20 @@ class _LoginScreenState extends State<LoginScreen> {
                   style: TextStyle(fontSize: 14, color: AppTheme.textSecondary),
                 ),
                 const SizedBox(width: 4),
-                Icon(
-                  Icons.info_outline,
-                  size: 16,
-                  color: AppTheme.textSecondary,
+                Tooltip(
+                  message:
+                      'Guarda tus credenciales de forma segura para el próximo inicio de sesión',
+                  child: Icon(
+                    Icons.info_outline,
+                    size: 16,
+                    color: AppTheme.textSecondary.withOpacity(0.7),
+                  ),
                 ),
               ],
             ),
           ),
         ),
       ],
-    );
-  }
-
-  void _showPasswordRequirements() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Requisitos de Contraseña'),
-        content: const Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('• Mínimo 6 caracteres'),
-            Text('• Máximo 50 caracteres'),
-            Text('• Puede incluir letras y números'),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Entendido'),
-          ),
-        ],
-      ),
     );
   }
 

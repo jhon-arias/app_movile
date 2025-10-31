@@ -1,146 +1,127 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class SecureStorageService {
-  static const String _fileName = 'user_credentials.json';
+  static const String _credentialsKey = 'gastos_app_credentials';
 
-  // Obtener el archivo de credenciales
-  static Future<File> _getCredentialsFile() async {
-    final directory = await getApplicationDocumentsDirectory();
-    return File('${directory.path}/$_fileName');
-  }
-
-  // Guardar credenciales
+  // Método que funciona tanto en web como en móviles
   static Future<void> saveCredentials(String email, String password) async {
     try {
-      final file = await _getCredentialsFile();
-      final credentials = {
-        'email': email,
-        'password': password,
-        'rememberMe': true,
-        'timestamp': DateTime.now().toIso8601String(),
-      };
-
-      await file.writeAsString(jsonEncode(credentials));
+      if (kIsWeb) {
+        // Para web, usar SharedPreferences
+        await _saveCredentialsWeb(email, password);
+      } else {
+        // Para móviles, usar archivos
+        await _saveCredentialsFile(email, password);
+      }
     } catch (e) {
       print('Error al guardar credenciales: $e');
+      rethrow;
     }
   }
 
-  // Obtener email guardado
-  static Future<String?> getSavedEmail() async {
+  static Future<Map<String, String>?> getSavedCredentials() async {
     try {
-      final credentials = await getSavedCredentials();
-      return credentials['email'];
-    } catch (e) {
-      print('Error al obtener email: $e');
-      return null;
-    }
-  }
+      Map<String, String>? credentials;
 
-  // Obtener contraseña guardada
-  static Future<String?> getSavedPassword() async {
-    try {
-      final credentials = await getSavedCredentials();
-      return credentials['password'];
-    } catch (e) {
-      print('Error al obtener contraseña: $e');
-      return null;
-    }
-  }
-
-  // Verificar si está habilitado "recordar me"
-  static Future<bool> isRememberMeEnabled() async {
-    try {
-      final credentials = await getSavedCredentials();
-      return credentials['rememberMe'] == 'true';
-    } catch (e) {
-      print('Error al verificar remember me: $e');
-      return false;
-    }
-  }
-
-  // Obtener credenciales completas
-  static Future<Map<String, String?>> getSavedCredentials() async {
-    try {
-      final file = await _getCredentialsFile();
-
-      if (!await file.exists()) {
-        return {'email': null, 'password': null, 'rememberMe': 'false'};
+      if (kIsWeb) {
+        // Para web, usar SharedPreferences
+        credentials = await _getCredentialsWeb();
+      } else {
+        // Para móviles, usar archivos
+        credentials = await _getCredentialsFile();
       }
 
-      final content = await file.readAsString();
-      final Map<String, dynamic> data = jsonDecode(content);
-
-      return {
-        'email': data['email'],
-        'password': data['password'],
-        'rememberMe': data['rememberMe'].toString(),
-      };
+      return credentials;
     } catch (e) {
       print('Error al obtener credenciales: $e');
-      return {'email': null, 'password': null, 'rememberMe': 'false'};
+      return null;
     }
   }
 
-  // Eliminar credenciales guardadas
   static Future<void> clearCredentials() async {
     try {
-      final file = await _getCredentialsFile();
-      if (await file.exists()) {
-        await file.delete();
+      if (kIsWeb) {
+        // Para web, usar SharedPreferences
+        await _clearCredentialsWeb();
+      } else {
+        // Para móviles, usar archivos
+        await _clearCredentialsFile();
       }
     } catch (e) {
       print('Error al limpiar credenciales: $e');
+      rethrow;
     }
   }
 
-  // Actualizar estado de "recordar me"
-  static Future<void> setRememberMe(bool remember) async {
-    try {
-      if (!remember) {
-        await clearCredentials();
-      } else {
-        // Si ya existen credenciales, mantenerlas pero marcar remember como true
-        final credentials = await getSavedCredentials();
-        if (credentials['email'] != null && credentials['password'] != null) {
-          await saveCredentials(
-            credentials['email']!,
-            credentials['password']!,
-          );
-        }
-      }
-    } catch (e) {
-      print('Error al actualizar remember me: $e');
-    }
+  // Implementación para Web usando SharedPreferences
+  static Future<void> _saveCredentialsWeb(String email, String password) async {
+    final prefs = await SharedPreferences.getInstance();
+    final credentialsMap = {'email': email, 'password': password};
+    final credentialsJson = jsonEncode(credentialsMap);
+    await prefs.setString(_credentialsKey, credentialsJson);
   }
 
-  // Verificar si las credenciales guardadas no son muy antiguas (para seguridad)
-  static Future<bool> areCredentialsValid() async {
-    try {
-      final file = await _getCredentialsFile();
+  static Future<Map<String, String>?> _getCredentialsWeb() async {
+    final prefs = await SharedPreferences.getInstance();
+    final credentialsJson = prefs.getString(_credentialsKey);
 
-      if (!await file.exists()) {
-        return false;
-      }
+    if (credentialsJson != null) {
+      final credentialsMap =
+          jsonDecode(credentialsJson) as Map<String, dynamic>;
+      return {
+        'email': credentialsMap['email'] as String,
+        'password': credentialsMap['password'] as String,
+      };
+    }
 
-      final content = await file.readAsString();
-      final Map<String, dynamic> data = jsonDecode(content);
+    return null;
+  }
 
-      if (data['timestamp'] == null) {
-        return false;
-      }
+  static Future<void> _clearCredentialsWeb() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_credentialsKey);
+  }
 
-      final savedTime = DateTime.parse(data['timestamp']);
-      final now = DateTime.now();
-      final difference = now.difference(savedTime).inDays;
+  // Implementación para móviles usando archivos
+  static Future<void> _saveCredentialsFile(
+    String email,
+    String password,
+  ) async {
+    final directory = await getApplicationDocumentsDirectory();
+    final file = File('${directory.path}/credentials.json');
 
-      // Las credenciales son válidas por 30 días
-      return difference <= 30;
-    } catch (e) {
-      print('Error al verificar validez de credenciales: $e');
-      return false;
+    final credentials = {'email': email, 'password': password};
+
+    await file.writeAsString(jsonEncode(credentials));
+  }
+
+  static Future<Map<String, String>?> _getCredentialsFile() async {
+    final directory = await getApplicationDocumentsDirectory();
+    final file = File('${directory.path}/credentials.json');
+
+    if (await file.exists()) {
+      final contents = await file.readAsString();
+      final credentials = jsonDecode(contents) as Map<String, dynamic>;
+
+      return {
+        'email': credentials['email'] as String,
+        'password': credentials['password'] as String,
+      };
+    }
+
+    return null;
+  }
+
+  static Future<void> _clearCredentialsFile() async {
+    final directory = await getApplicationDocumentsDirectory();
+    final file = File('${directory.path}/credentials.json');
+
+    if (await file.exists()) {
+      await file.delete();
     }
   }
 }
