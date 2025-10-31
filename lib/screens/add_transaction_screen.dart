@@ -103,6 +103,26 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     );
   }
 
+  void _showSuccess(String message) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.green),
+    );
+  }
+
+  // Método para eliminar una transacción
+  Future<void> _deleteTransaction(String transactionId) async {
+    try {
+      await _appWriteService.deleteTransaction(transactionId);
+      _showSuccess('Transacción eliminada correctamente');
+      // Recargar las transacciones recientes después de eliminar
+      await _loadRecentTransactions();
+    } catch (e) {
+      _showError('Error al eliminar transacción: $e');
+    }
+  }
+
   void _navigateToStatistics() {
     Navigator.push(
       context,
@@ -168,6 +188,8 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
             transactions: _recentTransactions,
             isLoading: _isLoadingRecent,
             onRefresh: _loadRecentTransactions,
+            onDeleteTransaction:
+                _deleteTransaction, // Agregar callback de eliminación
           ),
 
           _buildFooter(),

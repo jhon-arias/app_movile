@@ -676,7 +676,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                     ),
                     dataLabelMapper: (ChartData data, _) =>
                         '${data.x}\n\$${NumberFormat.compact().format(data.y)}',
-                    innerRadius: '40%',
+                    innerRadius: '50%',
                   ),
                 ],
               ),

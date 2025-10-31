@@ -163,4 +163,18 @@ class AppWriteService {
       rethrow;
     }
   }
+
+  // Método para eliminar una transacción
+  Future<void> deleteTransaction(String transactionId) async {
+    try {
+      await databases.deleteDocument(
+        databaseId: Env.appwriteDatabaseId,
+        collectionId: Env.appwriteTransactionsCollectionId,
+        documentId: transactionId,
+      );
+    } catch (e) {
+      print('Error al eliminar transacción: $e');
+      rethrow;
+    }
+  }
 }

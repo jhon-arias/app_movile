@@ -7,12 +7,14 @@ class RecentTransactionsWidget extends StatefulWidget {
   final List<Transaction> transactions;
   final bool isLoading;
   final VoidCallback onRefresh;
+  final Function(String)? onDeleteTransaction; // Nuevo callback para eliminar
 
   const RecentTransactionsWidget({
     Key? key,
     required this.transactions,
     required this.isLoading,
     required this.onRefresh,
+    this.onDeleteTransaction, // Callback opcional
   }) : super(key: key);
 
   @override
@@ -62,7 +64,7 @@ class _RecentTransactionsWidgetState extends State<RecentTransactionsWidget> {
                   const SizedBox(width: 6),
                   const Expanded(
                     child: Text(
-                      'Últimos registros',
+                      'Ver últimos registros',
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
@@ -244,38 +246,70 @@ class _RecentTransactionsWidgetState extends State<RecentTransactionsWidget> {
             ),
           ],
         ),
-        trailing: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.end,
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              '\$${transaction.amount.toStringAsFixed(0)}',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: isExpense ? Colors.red : Colors.green,
-              ),
+            // Columna con precio y tipo
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  '\$${transaction.amount.toStringAsFixed(0)}',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: isExpense ? Colors.red : Colors.green,
+                  ),
+                ),
+                const SizedBox(height: 1),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 1,
+                  ),
+                  decoration: BoxDecoration(
+                    color: _getTypeColor(transaction.type).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(3),
+                    border: Border.all(
+                      color: _getTypeColor(transaction.type).withOpacity(0.3),
+                      width: 0.5,
+                    ),
+                  ),
+                  child: Text(
+                    _getTypeLabel(transaction.type),
+                    style: TextStyle(
+                      fontSize: 7,
+                      color: _getTypeColor(transaction.type),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 1),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-              decoration: BoxDecoration(
-                color: _getTypeColor(transaction.type).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(3),
-                border: Border.all(
-                  color: _getTypeColor(transaction.type).withOpacity(0.3),
-                  width: 0.5,
+            // Botón de eliminar (solo si hay callback)
+            if (widget.onDeleteTransaction != null) ...[
+              const SizedBox(width: 4),
+              SizedBox(
+                width: 24,
+                height: 24,
+                child: IconButton(
+                  icon: Icon(
+                    Icons
+                        .delete_forever, // Cambiar a icono de tacho más visible
+                    size: 16,
+                    color: Colors.red.shade600,
+                  ),
+                  onPressed: () => _showDeleteConfirmation(transaction),
+                  style: IconButton.styleFrom(
+                    backgroundColor: Colors.red.shade50,
+                    foregroundColor: Colors.red.shade600,
+                    padding: EdgeInsets.zero,
+                  ),
+                  tooltip: 'Eliminar transacción',
                 ),
               ),
-              child: Text(
-                _getTypeLabel(transaction.type),
-                style: TextStyle(
-                  fontSize: 7,
-                  color: _getTypeColor(transaction.type),
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
+            ],
           ],
         ),
       ),
@@ -310,5 +344,132 @@ class _RecentTransactionsWidgetState extends State<RecentTransactionsWidget> {
       default:
         return 'Otro';
     }
+  }
+
+  // Método para mostrar el diálogo de confirmación de eliminación
+  void _showDeleteConfirmation(Transaction transaction) {
+    showDialog(
+      context: context,
+      barrierDismissible: false, // Evitar que se cierre tocando fuera
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          title: Row(
+            children: [
+              Icon(
+                Icons.warning_amber_rounded,
+                color: Colors.orange.shade600,
+                size: 24,
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                'Confirmar eliminación',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '¿Estás seguro de que deseas eliminar esta transacción?',
+                style: TextStyle(fontSize: 16, color: Colors.grey.shade700),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey.shade200),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      transaction.description,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '\$${transaction.amount.toStringAsFixed(0)} - ${transaction.categoryName}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Esta acción no se puede deshacer.',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.red.shade600,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 12,
+                ),
+              ),
+              child: Text(
+                'Cancelar',
+                style: TextStyle(
+                  color: Colors.grey.shade600,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                if (transaction.id != null) {
+                  widget.onDeleteTransaction!(transaction.id!);
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 12,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.delete_forever, size: 16),
+                  const SizedBox(width: 4),
+                  const Text(
+                    'Eliminar',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+        );
+      },
+    );
   }
 }
