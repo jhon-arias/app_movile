@@ -4,6 +4,7 @@ import 'package:gastos_app/auth/auth_service.dart';
 import 'package:gastos_app/screens/add_transaction_screen.dart';
 import 'package:gastos_app/app/theme.dart';
 import 'package:gastos_app/widgets/app_logo.dart';
+import 'package:gastos_app/services/credentials_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -17,6 +18,9 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _isLogin = true;
+  bool _rememberPassword = false; // Nueva variable para recordar contraseña
+  bool _isPasswordVisible =
+      false; // Variable para controlar visibilidad de contraseña
 
   @override
   void initState() {
@@ -25,6 +29,7 @@ class _LoginScreenState extends State<LoginScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _precacheImages();
       _checkActiveSession();
+      _loadSavedCredentials(); // Cargar credenciales guardadas
     });
   }
 
@@ -41,6 +46,27 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (hasActiveSession && mounted) {
       _navigateToMainScreen();
+    }
+  }
+
+  // Cargar credenciales guardadas
+  Future<void> _loadSavedCredentials() async {
+    try {
+      final credentials = await SecureStorageService.getSavedCredentials();
+      final isValid = await SecureStorageService.areCredentialsValid();
+
+      if (mounted &&
+          credentials['email'] != null &&
+          credentials['password'] != null &&
+          isValid) {
+        setState(() {
+          _emailController.text = credentials['email']!;
+          _passwordController.text = credentials['password']!;
+          _rememberPassword = credentials['rememberMe'] == 'true';
+        });
+      }
+    } catch (e) {
+      print('Error al cargar credenciales guardadas: $e');
     }
   }
 
@@ -74,6 +100,17 @@ class _LoginScreenState extends State<LoginScreen> {
           );
 
     if (success && mounted) {
+      // Guardar credenciales si está marcada la opción y es login exitoso
+      if (_isLogin && _rememberPassword) {
+        await SecureStorageService.saveCredentials(
+          _emailController.text,
+          _passwordController.text,
+        );
+      } else if (!_rememberPassword) {
+        // Si no está marcada la opción, limpiar credenciales guardadas
+        await SecureStorageService.clearCredentials();
+      }
+
       _navigateToMainScreen();
     }
   }
@@ -169,6 +206,9 @@ class _LoginScreenState extends State<LoginScreen> {
             _buildEmailField(),
             const SizedBox(height: 16),
             _buildPasswordField(),
+            const SizedBox(height: 12),
+            // Checkbox de recordar contraseña (solo en login)
+            if (_isLogin) _buildRememberPasswordCheckbox(),
             const SizedBox(height: 20),
             if (authService.errorMessage != null)
               _buildErrorMessage(authService.errorMessage!),
@@ -202,15 +242,36 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _buildPasswordField() {
     return TextFormField(
       controller: _passwordController,
-      obscureText: true,
+      obscureText: !_isPasswordVisible,
       decoration: InputDecoration(
         labelText: 'Contraseña',
         prefixIcon: const Icon(Icons.lock, color: AppTheme.primaryColor),
         hintText: 'Mínimo 6 caracteres',
-        suffixIcon: IconButton(
-          icon: const Icon(Icons.help_outline, size: 18),
-          onPressed: _showPasswordRequirements,
-          color: AppTheme.textSecondary,
+        suffixIcon: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: Icon(
+                _isPasswordVisible ? Icons.visibility_off : Icons.visibility,
+                size: 18,
+                color: AppTheme.primaryColor,
+              ),
+              onPressed: () {
+                setState(() {
+                  _isPasswordVisible = !_isPasswordVisible;
+                });
+              },
+              tooltip: _isPasswordVisible
+                  ? 'Ocultar contraseña'
+                  : 'Mostrar contraseña',
+            ),
+            IconButton(
+              icon: const Icon(Icons.help_outline, size: 18),
+              onPressed: _showPasswordRequirements,
+              color: AppTheme.textSecondary,
+              tooltip: 'Ver requisitos de contraseña',
+            ),
+          ],
         ),
       ),
       onChanged: (_) => _clearError(),
@@ -220,6 +281,48 @@ class _LoginScreenState extends State<LoginScreen> {
         }
         return null;
       },
+    );
+  }
+
+  // Widget para el checkbox de recordar contraseña
+  Widget _buildRememberPasswordCheckbox() {
+    return Row(
+      children: [
+        Checkbox(
+          value: _rememberPassword,
+          onChanged: (value) {
+            setState(() {
+              _rememberPassword = value ?? false;
+            });
+          },
+          activeColor: AppTheme.primaryColor,
+          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        ),
+        const SizedBox(width: 4),
+        Expanded(
+          child: GestureDetector(
+            onTap: () {
+              setState(() {
+                _rememberPassword = !_rememberPassword;
+              });
+            },
+            child: Row(
+              children: [
+                Text(
+                  'Recordar contraseña',
+                  style: TextStyle(fontSize: 14, color: AppTheme.textSecondary),
+                ),
+                const SizedBox(width: 4),
+                Icon(
+                  Icons.info_outline,
+                  size: 16,
+                  color: AppTheme.textSecondary,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 
