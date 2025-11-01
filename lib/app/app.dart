@@ -5,13 +5,44 @@ import 'package:gastos_app/auth/login_screen.dart';
 import 'package:gastos_app/screens/add_transaction_screen.dart';
 import 'package:gastos_app/app/theme.dart';
 
-class GastosApp extends StatelessWidget {
+class GastosApp extends StatefulWidget {
   const GastosApp({Key? key}) : super(key: key);
+
+  @override
+  State<GastosApp> createState() => _GastosAppState();
+}
+
+class _GastosAppState extends State<GastosApp> with WidgetsBindingObserver {
+  late AuthService _authService;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached) {
+      // Logout al salir de la app
+      _authService.logout();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
-      create: (context) => AuthService(),
+      create: (context) {
+        _authService = AuthService();
+        return _authService;
+      },
       child: MaterialApp(
         title: 'Gestión de Finanzas Personales',
         theme: AppTheme.lightTheme,
