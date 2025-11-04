@@ -112,6 +112,9 @@ class AppWriteService {
       // Ordenar por fecha descendente (más reciente primero)
       queries.add(Query.orderDesc('date'));
 
+      // Agregar límite para obtener todas las transacciones
+      queries.add(Query.limit(5000));
+
       final result = await databases.listDocuments(
         databaseId: Env.appwriteDatabaseId,
         collectionId: Env.appwriteTransactionsCollectionId,
@@ -126,6 +129,32 @@ class AppWriteService {
     }
   }
 
+  // Método para contar TODAS las transacciones del usuario (sin filtros de fecha)
+  Future<List<Transaction>> getAllUserTransactions(String userId) async {
+    try {
+      final result = await databases.listDocuments(
+        databaseId: Env.appwriteDatabaseId,
+        collectionId: Env.appwriteTransactionsCollectionId,
+        queries: [
+          Query.equal('userId', userId),
+          Query.orderDesc('date'),
+          Query.limit(
+            5000,
+          ), // Aumentar el límite para asegurar que obtenemos todas
+        ],
+      );
+
+      final transactions = result.documents
+          .map((doc) => Transaction.fromMap(doc.data))
+          .toList();
+
+      return transactions;
+    } catch (e) {
+      print('Error al contar todas las transacciones: $e');
+      rethrow;
+    }
+  }
+
   Future<List<Transaction>> getTransactionsByDateRange(
     String userId,
     DateTime startDate,
@@ -133,6 +162,15 @@ class AppWriteService {
   ) async {
     try {
       // Ajustar las fechas para incluir todo el día
+      final adjustedStartDate = DateTime(
+        startDate.year,
+        startDate.month,
+        startDate.day,
+        0,
+        0,
+        0,
+      );
+
       final adjustedEndDate = DateTime(
         endDate.year,
         endDate.month,
@@ -147,11 +185,14 @@ class AppWriteService {
         collectionId: Env.appwriteTransactionsCollectionId,
         queries: [
           Query.equal('userId', userId),
-          Query.greaterThanEqual('date', startDate.toIso8601String()),
+          Query.greaterThanEqual('date', adjustedStartDate.toIso8601String()),
           Query.lessThanEqual('date', adjustedEndDate.toIso8601String()),
           Query.orderDesc(
             'date',
           ), // Ordenar por fecha descendente (más reciente primero)
+          Query.limit(
+            5000,
+          ), // ¡IMPORTANTE! Aumentar el límite para obtener todas las transacciones
         ],
       );
 

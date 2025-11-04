@@ -75,6 +75,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
         });
       }
     } catch (e) {
+      print('Error loading transactions: $e');
       _setError('Error al cargar transacciones: $e');
     }
   }
@@ -121,7 +122,8 @@ class _StatisticsScreenState extends State<StatisticsScreen>
     final Map<String, double> categoryTotals = {};
 
     for (final transaction in _transactions) {
-      if (transaction.type.contains('gasto')) {
+      if (transaction.type == 'gasto_fijo' ||
+          transaction.type == 'gasto_variable') {
         categoryTotals[transaction.categoryName] =
             (categoryTotals[transaction.categoryName] ?? 0) +
             transaction.amount;
@@ -163,10 +165,12 @@ class _StatisticsScreenState extends State<StatisticsScreen>
       final monthKey =
           '${_getMonthName(transaction.date.month)} ${transaction.date.year}';
 
-      if (transaction.type.contains('gasto')) {
+      if (transaction.type == 'gasto_fijo' ||
+          transaction.type == 'gasto_variable') {
         monthlyExpenses[monthKey] =
             (monthlyExpenses[monthKey] ?? 0) + transaction.amount;
-      } else if (transaction.type.contains('ingreso')) {
+      } else if (transaction.type == 'ingreso_fijo' ||
+          transaction.type == 'ingreso_variable') {
         monthlyIncomes[monthKey] =
             (monthlyIncomes[monthKey] ?? 0) + transaction.amount;
       }
@@ -247,15 +251,25 @@ class _StatisticsScreenState extends State<StatisticsScreen>
 
   // CÁLCULOS DE RESUMEN
   double get _totalIncome {
-    return _transactions
-        .where((t) => t.type.contains('ingreso'))
-        .fold(0.0, (sum, t) => sum + t.amount);
+    // Buscar transacciones de ingreso (ingreso_fijo, ingreso_variable)
+    final incomeTransactions = _transactions
+        .where((t) => t.type == 'ingreso_fijo' || t.type == 'ingreso_variable')
+        .toList();
+
+    final total = incomeTransactions.fold(0.0, (sum, t) => sum + t.amount);
+
+    return total;
   }
 
   double get _totalExpenses {
-    return _transactions
-        .where((t) => t.type.contains('gasto'))
-        .fold(0.0, (sum, t) => sum + t.amount);
+    // Buscar transacciones de gasto (gasto_fijo, gasto_variable)
+    final expenseTransactions = _transactions
+        .where((t) => t.type == 'gasto_fijo' || t.type == 'gasto_variable')
+        .toList();
+
+    final total = expenseTransactions.fold(0.0, (sum, t) => sum + t.amount);
+
+    return total;
   }
 
   double get _balance => _totalIncome - _totalExpenses;
@@ -393,6 +407,16 @@ class _StatisticsScreenState extends State<StatisticsScreen>
   }
 
   Widget _buildContent() {
+    if (_transactions.isEmpty) {
+      return Column(
+        children: [
+          _buildDateFilters(),
+          const SizedBox(height: 20),
+          _buildEmptyState(),
+        ],
+      );
+    }
+
     return SingleChildScrollView(
       child: Column(
         children: [
@@ -436,11 +460,6 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                   ),
                 ),
               ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '${_transactions.length} transacciones encontradas',
-              style: const TextStyle(fontSize: 12, color: Colors.grey),
             ),
           ],
         ),
@@ -490,6 +509,8 @@ class _StatisticsScreenState extends State<StatisticsScreen>
             _balance >= 0 ? Colors.green : Colors.red,
             Icons.balance,
           ),
+          const SizedBox(width: 12),
+          _buildRefreshButton(),
         ],
       ),
     );
@@ -521,11 +542,11 @@ class _StatisticsScreenState extends State<StatisticsScreen>
               ),
               const SizedBox(height: 4),
               Text(
-                '\$${amount.toStringAsFixed(0)}',
+                amount == 0 ? '\$0' : '\$${amount.toStringAsFixed(0)}',
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.bold,
-                  color: color,
+                  color: amount == 0 ? Colors.grey : color,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -1026,6 +1047,36 @@ class _StatisticsScreenState extends State<StatisticsScreen>
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRefreshButton() {
+    return Container(
+      margin: const EdgeInsets.only(left: 8),
+      child: ElevatedButton.icon(
+        onPressed: _isLoading
+            ? null
+            : () {
+                _loadTransactions();
+              },
+        icon: _isLoading
+            ? const SizedBox(
+                width: 12,
+                height: 12,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              )
+            : const Icon(Icons.refresh, size: 16),
+        label: const Text('Actualizar', style: TextStyle(fontSize: 11)),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.blue,
+          foregroundColor: Colors.white,
+          minimumSize: const Size(80, 36),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         ),
       ),
     );
