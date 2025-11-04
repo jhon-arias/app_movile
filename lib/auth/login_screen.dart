@@ -4,7 +4,6 @@ import 'package:gastos_app/auth/auth_service.dart';
 import 'package:gastos_app/screens/add_transaction_screen.dart';
 import 'package:gastos_app/app/theme.dart';
 import 'package:gastos_app/widgets/app_logo.dart';
-import 'package:gastos_app/services/credentials_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -18,7 +17,6 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _isLogin = true;
-  bool _rememberPassword = false; // Nueva variable para recordar contraseña
   bool _isPasswordVisible =
       false; // Variable para controlar visibilidad de contraseña
 
@@ -29,11 +27,6 @@ class _LoginScreenState extends State<LoginScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       _precacheImages();
       _checkActiveSession();
-      // Limpiar credenciales guardadas al iniciar para evitar autocompletar test/demo
-      await SecureStorageService.clearCredentials();
-      Future.delayed(const Duration(milliseconds: 100), () {
-        _loadSavedCredentials();
-      });
     });
   }
 
@@ -50,32 +43,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (hasActiveSession && mounted) {
       _navigateToMainScreen();
-    }
-  }
-
-  // Cargar credenciales guardadas
-  Future<void> _loadSavedCredentials() async {
-    try {
-      final credentials = await SecureStorageService.getSavedCredentials();
-      if (mounted &&
-          credentials != null &&
-          credentials['email'] != null &&
-          credentials['password'] != null) {
-        final email = credentials['email']!;
-        final password = credentials['password']!;
-        // Solo autocompletar si parecen credenciales reales
-        final isValid =
-            email.trim().isNotEmpty &&
-            password.trim().isNotEmpty &&
-            password.trim().length >= 6;
-        setState(() {
-          _emailController.text = isValid ? email : '';
-          _passwordController.text = isValid ? password : '';
-          _rememberPassword = isValid;
-        });
-      }
-    } catch (e) {
-      print('Error al cargar credenciales guardadas: $e');
     }
   }
 
@@ -110,61 +77,6 @@ class _LoginScreenState extends State<LoginScreen> {
           );
 
     if (success && mounted) {
-      // Guardar credenciales si está marcada la opción y es login exitoso
-      if (_isLogin && _rememberPassword) {
-        try {
-          await SecureStorageService.saveCredentials(
-            _emailController.text,
-            _passwordController.text,
-          );
-
-          // Mostrar confirmación visual
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Row(
-                  children: [
-                    Icon(Icons.check_circle, color: Colors.white),
-                    SizedBox(width: 8),
-                    Text('Credenciales guardadas de forma segura'),
-                  ],
-                ),
-                backgroundColor: Colors.green,
-                duration: Duration(seconds: 2),
-              ),
-            );
-          }
-        } catch (e) {
-          print('Error al guardar credenciales: $e');
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Row(
-                  children: [
-                    const Icon(Icons.warning, color: Colors.white),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'No se pudieron guardar las credenciales: $e',
-                      ),
-                    ),
-                  ],
-                ),
-                backgroundColor: Colors.orange,
-                duration: const Duration(seconds: 3),
-              ),
-            );
-          }
-        }
-      } else if (!_rememberPassword) {
-        // Si no está marcada la opción, limpiar credenciales guardadas
-        try {
-          await SecureStorageService.clearCredentials();
-        } catch (e) {
-          print('Error al eliminar credenciales: $e');
-        }
-      }
-
       _navigateToMainScreen();
     }
   }
@@ -261,8 +173,6 @@ class _LoginScreenState extends State<LoginScreen> {
             const SizedBox(height: 16),
             _buildPasswordField(),
             const SizedBox(height: 12),
-            // Checkbox de recordar contraseña (solo en login)
-            if (_isLogin) _buildRememberPasswordCheckbox(),
             const SizedBox(height: 20),
             if (authService.errorMessage != null)
               _buildErrorMessage(authService.errorMessage!),
@@ -342,50 +252,6 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   // Widget para el checkbox de recordar contraseña
-  Widget _buildRememberPasswordCheckbox() {
-    return Row(
-      children: [
-        Checkbox(
-          value: _rememberPassword,
-          onChanged: (value) {
-            setState(() {
-              _rememberPassword = value ?? false;
-            });
-          },
-          activeColor: AppTheme.primaryColor,
-          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        ),
-        const SizedBox(width: 4),
-        Expanded(
-          child: GestureDetector(
-            onTap: () {
-              setState(() {
-                _rememberPassword = !_rememberPassword;
-              });
-            },
-            child: Row(
-              children: [
-                Text(
-                  'Recordar contraseña',
-                  style: TextStyle(fontSize: 14, color: AppTheme.textSecondary),
-                ),
-                const SizedBox(width: 4),
-                Tooltip(
-                  message:
-                      'Guarda tus credenciales de forma segura para el próximo inicio de sesión',
-                  child: Icon(
-                    Icons.info_outline,
-                    size: 16,
-                    color: AppTheme.textSecondary.withOpacity(0.7),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
 
   Widget _buildErrorMessage(String message) {
     return Container(
