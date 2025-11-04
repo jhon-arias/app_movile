@@ -42,9 +42,11 @@ class _RecentTransactionsWidgetState extends State<RecentTransactionsWidget> {
               });
             },
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: AppTheme.primaryColor.withOpacity(0.08),
+                // ignore: deprecated_member_use
+                color: AppTheme.resumenColor.withOpacity(0.7),
                 borderRadius: _isExpanded
                     ? const BorderRadius.only(
                         topLeft: Radius.circular(8),
@@ -58,36 +60,38 @@ class _RecentTransactionsWidgetState extends State<RecentTransactionsWidget> {
                 children: [
                   const Icon(
                     Icons.history,
-                    color: AppTheme.primaryColor,
-                    size: 16,
+                    color: AppTheme.textColor,
+                    size: 14,
                   ),
-                  const SizedBox(width: 6),
-                  const Expanded(
-                    child: Text(
-                      'Ver últimos registros',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: AppTheme.primaryColor,
-                      ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Ver últimos registros',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.textColor,
                     ),
                   ),
+                  const Spacer(),
                   Icon(
                     _isExpanded ? Icons.expand_less : Icons.expand_more,
                     color: AppTheme.primaryColor,
-                    size: 20,
+                    size: 18,
                   ),
-                  const SizedBox(width: 2),
-                  IconButton(
-                    icon: const Icon(Icons.refresh, size: 16),
-                    onPressed: widget.onRefresh,
-                    style: IconButton.styleFrom(
-                      foregroundColor: AppTheme.primaryColor,
-                      backgroundColor: Colors.transparent,
-                      minimumSize: const Size(24, 24),
-                      padding: const EdgeInsets.all(4),
+                  const SizedBox(width: 4),
+                  SizedBox(
+                    width: 28,
+                    height: 28,
+                    child: IconButton(
+                      icon: const Icon(Icons.refresh, size: 14),
+                      onPressed: widget.onRefresh,
+                      style: IconButton.styleFrom(
+                        foregroundColor: AppTheme.textColor,
+                        backgroundColor: Colors.transparent,
+                        padding: EdgeInsets.zero,
+                      ),
+                      tooltip: 'Actualizar',
                     ),
-                    tooltip: 'Actualizar',
                   ),
                 ],
               ),
@@ -102,10 +106,10 @@ class _RecentTransactionsWidgetState extends State<RecentTransactionsWidget> {
                   ? 80
                   : widget.transactions.isEmpty
                   ? 100
-                  : (widget.transactions.length * 50.0).clamp(
+                  : (widget.transactions.length * 45.0).clamp(
                       80.0,
-                      180.0,
-                    ), // Altura más pequeña con elementos compactos
+                      350.0,
+                    ), // Altura optimizada para mostrar hasta 15 transacciones (350px = ~7-8 registros visibles)
               child: widget.isLoading
                   ? _buildLoading()
                   : widget.transactions.isEmpty
@@ -150,7 +154,7 @@ class _RecentTransactionsWidgetState extends State<RecentTransactionsWidget> {
             Icon(Icons.receipt_long, size: 32, color: Colors.grey.shade400),
             const SizedBox(height: 6),
             const Text(
-              'No hay transacciones\nen los últimos 5 días',
+              'No hay transacciones\nrecientes',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 11, color: Colors.grey),
             ),
@@ -176,13 +180,14 @@ class _RecentTransactionsWidgetState extends State<RecentTransactionsWidget> {
         return 0;
       });
 
-    // Tomar solo las 5 transacciones más recientes
-    final recentTransactions = sortedTransactions.take(5).toList();
+    // Tomar solo las 15 transacciones más recientes
+    final recentTransactions = sortedTransactions.take(15).toList();
 
     return ListView.builder(
       padding: const EdgeInsets.all(0),
       shrinkWrap: true, // Ajustar al contenido
-      physics: const NeverScrollableScrollPhysics(), // Desactivar scroll propio
+      physics:
+          const ClampingScrollPhysics(), // Habilitar scroll para ver todos los registros
       itemCount: recentTransactions.length,
       itemBuilder: (context, index) {
         final transaction = recentTransactions[index];

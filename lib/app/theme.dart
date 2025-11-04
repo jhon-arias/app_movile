@@ -8,6 +8,7 @@ class AppTheme {
   static const Color surfaceColor = Colors.white;
   static const Color textColor = Color(0xFF212121);
   static const Color textSecondary = Color(0xFF757575);
+  static const Color resumenColor = Color(0xFF2196F3); // Azul
 
   static ThemeData get lightTheme {
     return ThemeData(
