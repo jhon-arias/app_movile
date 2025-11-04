@@ -8,7 +8,6 @@ import 'package:gastos_app/widgets/transaction_form.dart';
 import 'package:gastos_app/widgets/recent_transactions.dart';
 import 'package:gastos_app/app/theme.dart';
 import 'package:gastos_app/widgets/app_logo.dart';
-import 'package:gastos_app/mixins/auto_logout_mixin.dart';
 
 class AddTransactionScreen extends StatefulWidget {
   const AddTransactionScreen({Key? key}) : super(key: key);
@@ -17,8 +16,7 @@ class AddTransactionScreen extends StatefulWidget {
   State<AddTransactionScreen> createState() => _AddTransactionScreenState();
 }
 
-class _AddTransactionScreenState extends State<AddTransactionScreen>
-    with AutoLogoutMixin {
+class _AddTransactionScreenState extends State<AddTransactionScreen> {
   final AppWriteService _appWriteService = AppWriteService();
   String? _currentUserId;
   List<Transaction> _recentTransactions = [];
@@ -175,29 +173,27 @@ class _AddTransactionScreenState extends State<AddTransactionScreen>
           ),
         ],
       ),
-      body: buildWithActivityDetection(
-        child: Column(
-          children: [
-            // Formulario de transacción - ocupa el espacio restante disponible
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16.0),
-                child: TransactionForm(onSubmit: _addTransaction),
-              ),
+      body: Column(
+        children: [
+          // Formulario de transacción - ocupa el espacio restante disponible
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16.0),
+              child: TransactionForm(onSubmit: _addTransaction),
             ),
+          ),
 
-            // Transacciones recientes - siempre en la parte inferior
-            RecentTransactionsWidget(
-              transactions: _recentTransactions,
-              isLoading: _isLoadingRecent,
-              onRefresh: _loadRecentTransactions,
-              onDeleteTransaction:
-                  _deleteTransaction, // Agregar callback de eliminación
-            ),
+          // Transacciones recientes - siempre en la parte inferior
+          RecentTransactionsWidget(
+            transactions: _recentTransactions,
+            isLoading: _isLoadingRecent,
+            onRefresh: _loadRecentTransactions,
+            onDeleteTransaction:
+                _deleteTransaction, // Agregar callback de eliminación
+          ),
 
-            _buildFooter(),
-          ],
-        ),
+          _buildFooter(),
+        ],
       ),
     );
   }
